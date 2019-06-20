@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quay-openshift-registry-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: quay-openshift-registry-operator
+  template:
+    metadata:
+      labels:
+        name: quay-openshift-registry-operator
+    spec:
+      serviceAccountName: quay-openshift-registry-operator
+      containers:
+        - name: quay-openshift-registry-operator
+          # Replace this with the built image name
+          image: REPLACE_IMAGE
+          command:
+          - quay-openshift-registry-operator
+          imagePullPolicy: Always
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "quay-openshift-registry-operator"

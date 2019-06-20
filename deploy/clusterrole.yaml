@@ -1,0 +1,29 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: quay-openshift-registry-operator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  - events
+  - serviceaccounts
+  - namespaces
+  verbs:
+  - 'create'
+  - 'update'
+  - 'get'
+  - 'list'
+  - 'watch'
+  - 'delete'
+  - 'patch'
+  - 'put'
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
+  verbs:
+  - get
+  - create
