@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
-
+	imagev1 "github.com/openshift/api/image/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
 	qclient "github.com/redhat-cop/quay-openshift-registry-operator/pkg/client/quay"
@@ -98,7 +98,6 @@ type ReconcileNamespace struct {
 func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := logging.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling QuayIntegration")
-
 	// Fetch the Namespace instance
 	instance := &corev1.Namespace{}
 	err := r.reconcilerBase.GetClient().Get(context.TODO(), request.NamespacedName, instance)
@@ -200,6 +199,16 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 
 	// Finalizer Management
 	if !util.HasFinalizer(instance, constants.NamespaceFinalizer) {
+
+		// Check if OpenShift Project
+		if utils.IsOpenShiftAnnotatedNamespace(instance) {
+
+			if _, sccMcsFound := instance.Annotations[constants.OpenShiftSccMcsAnnotation]; !sccMcsFound {
+				return reconcile.Result{}, nil
+			}
+
+		}
+
 		util.AddFinalizer(instance, constants.NamespaceFinalizer)
 		err := r.reconcilerBase.GetClient().Update(context.TODO(), instance)
 		if err != nil {
@@ -237,7 +246,7 @@ func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespace
 		_, createOrganizationResponse, createOrganizationError := quayClient.CreateOrganization(quayOrganizationName)
 
 		if createOrganizationError != nil || createOrganizationResponse.StatusCode != 201 {
-			logging.Log.Error(fmt.Errorf("Error occurred retrieving Organization"), "Error occurred retrieving Organization", "Status Code", createOrganizationResponse.StatusCode)
+			logging.Log.Error(fmt.Errorf("Error occurred creating Organization"), "Error occurred creating Organization", "Status Code", createOrganizationResponse.StatusCode)
 			return reconcile.Result{Requeue: true}, createOrganizationError
 		}
 
@@ -253,6 +262,48 @@ func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespace
 
 		if robotAccountErr != nil {
 			return robotAccountResult, robotAccountErr
+		}
+
+	}
+
+	// Synchronize Namespaces
+	imageStreams := imagev1.ImageStreamList{}
+
+	err := r.reconcilerBase.GetClient().List(context.TODO(), &client.ListOptions{Namespace: namespaceName}, &imageStreams)
+
+	if err != nil {
+		logging.Log.Error(err, "Error Retrieving ImageStreams for Namespace", "Namespace", namespaceName)
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	for _, imageStream := range imageStreams.Items {
+		logging.Log.Info("ImageStream Found in Namespace", "Namespace", namespaceName, "Name", imageStream.Name)
+
+		imageStreamName := imageStream.Name
+		// Check if Repository Exists
+		_, repositoryHttpResponse, repositoryErr := quayClient.GetRepository(quayOrganizationName, imageStreamName)
+
+		if repositoryErr != nil {
+
+			logging.Log.Error(err, "Error Retrieving Repository", "Namespace", namespaceName, "Name", imageStreamName, "Status Code", repositoryHttpResponse.StatusCode)
+			return reconcile.Result{}, err
+		}
+
+		// If an Repository reports back that it cannot be found or permission dened
+		if repositoryHttpResponse.StatusCode == 403 || repositoryHttpResponse.StatusCode == 404 {
+			logging.Log.Info("Creating Repository", "Organization", quayOrganizationName, "Name", imageStreamName)
+
+			_, createRepositoryResponse, createRepositoryErr := quayClient.CreateRepository(quayOrganizationName, imageStreamName)
+
+			if createRepositoryErr != nil || createRepositoryResponse.StatusCode != 201 {
+				logging.Log.Error(fmt.Errorf("Error occurred creating repository"), "Error occurred creating repository", "Status Code", createRepositoryResponse.StatusCode)
+				return reconcile.Result{Requeue: true}, createRepositoryErr
+			}
+
+		} else if repositoryHttpResponse.StatusCode != 200 {
+			logging.Log.Error(err, "Error Retrieving Repository for Namespace", "Namespace", namespaceName, "Name", imageStreamName)
+			return reconcile.Result{Requeue: true}, err
+
 		}
 
 	}

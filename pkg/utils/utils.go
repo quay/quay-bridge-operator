@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -85,4 +86,12 @@ func ObjectReferenceNameExists(objectReferenceNames []corev1.ObjectReference, na
 	}
 
 	return false
+}
+
+func IsOpenShiftAnnotatedNamespace(namespace *corev1.Namespace) bool {
+
+	_, displayNameFound := namespace.Annotations[constants.OpenShiftDisplayNameAnnotation]
+	_, descriptionFound := namespace.Annotations[constants.OpenShiftDescriptionAnnotation]
+
+	return displayNameFound && descriptionFound
 }

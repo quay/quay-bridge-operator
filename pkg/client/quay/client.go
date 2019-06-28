@@ -124,6 +124,37 @@ func (c *QuayClient) CreateRobotPermissionForOrganization(organizationName strin
 	return newPrototypeResponse, resp, err
 }
 
+func (c *QuayClient) GetRepository(orgName string, repositoryName string) (Repository, *http.Response, error) {
+	req, err := c.newRequest("GET", fmt.Sprintf("/api/v1/repository/%s/%s", orgName, repositoryName), nil)
+	if err != nil {
+		return Repository{}, nil, err
+	}
+	var repository Repository
+	resp, err := c.do(req, &repository)
+
+	return repository, resp, err
+}
+
+func (c *QuayClient) CreateRepository(namespace, name string) (RepositoryRequest, *http.Response, error) {
+
+	newRepository := RepositoryRequest{
+		Repository:  name,
+		Namespace:   namespace,
+		Kind:        "image",
+		Visibility:  "private",
+		Description: "",
+	}
+
+	req, err := c.newRequest("POST", "/api/v1/repository", newRepository)
+	if err != nil {
+		return RepositoryRequest{}, nil, err
+	}
+	var newRepositoryResponse RepositoryRequest
+	resp, err := c.do(req, &newRepositoryResponse)
+
+	return newRepositoryResponse, resp, err
+}
+
 func (c *QuayClient) newRequest(method, path string, body interface{}) (*http.Request, error) {
 	rel := &url.URL{Path: path}
 	u := c.BaseURL.ResolveReference(rel)
@@ -157,16 +188,20 @@ func (c *QuayClient) do(req *http.Request, v interface{}) (*http.Response, error
 	}
 	defer resp.Body.Close()
 
-	if _, ok := v.(*StringValue); ok {
-		responseData, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		responseObject := v.(*StringValue)
-		responseObject.Value = string(responseData)
+	if v != nil {
 
-	} else {
-		err = json.NewDecoder(resp.Body).Decode(v)
+		if _, ok := v.(*StringValue); ok {
+			responseData, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+			responseObject := v.(*StringValue)
+			responseObject.Value = string(responseData)
+
+		} else {
+			err = json.NewDecoder(resp.Body).Decode(v)
+		}
+
 	}
 
 	return resp, err

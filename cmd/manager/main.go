@@ -10,14 +10,15 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/controller"
-
+	imagev1 "github.com/openshift/api/image/v1"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"github.com/operator-framework/operator-sdk/pkg/restmapper"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
+	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis"
+	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
+	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/controller"
 	"github.com/spf13/pflag"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -104,10 +105,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Setup all Controllers
-	if err := controller.AddToManager(mgr); err != nil {
+	if err := imagev1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
+	}
+
+	// Setup all Controllers if not running in Webhook only mode
+
+	_, webhookEnvVarFound := os.LookupEnv(constants.WebHookOnlyModeEnabledEnvVar)
+
+	if !webhookEnvVarFound {
+
+		if err := controller.AddToManager(mgr); err != nil {
+			log.Error(err, "")
+			os.Exit(1)
+		}
+
 	}
 
 	// Create Service object to expose the metrics port.

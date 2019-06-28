@@ -42,6 +42,30 @@ type Prototype struct {
 	Delegate PrototypeDelegate `json:"delegate"`
 }
 
+type Repository struct {
+	TrustEnabled   bool              `json:"trust_enabled"`
+	Description    string            `json:"description"`
+	CanAdmin       bool              `json:"can_admin"`
+	CanWrite       bool              `json:"can_write"`
+	IsOrganization bool              `json:"is_organization"`
+	IsStarred      bool              `json:"is_starred"`
+	IsPublic       bool              `json:"is_public"`
+	Name           string            `json:"name"`
+	Namespace      string            `json:"namespace"`
+	Image          string            `json:"image"`
+	TagExpirationS int               `json:"tag_expiration_s"`
+	Tags           map[string]string `json:"tags"`
+	StatusToken    string            `json:"status_token"`
+}
+
+type RepositoryRequest struct {
+	Namespace   string `json:"namespace"`
+	Visibility  string `json:"visibility"`
+	Repository  string `json:"repository"`
+	Description string `json:"description"`
+	Kind        string `json:"repo_kind"`
+}
+
 type PrototypeDelegate struct {
 	Kind      string `json:"kind"`
 	Name      string `json:"name"`
@@ -63,7 +87,6 @@ func IsRobotAccountInPrototypeByRole(prototypes []Prototype, robotAccount string
 		}
 
 	}
-
 
 	return false
 
