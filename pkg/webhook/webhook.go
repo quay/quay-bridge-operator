@@ -100,7 +100,6 @@ func (wsvr *WebhookServer) Handle(w http.ResponseWriter, r *http.Request) {
 		logging.Log.Error(err, "Can't encode response")
 		http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
 	}
-	logging.Log.Info("Ready to write reponse ...")
 	if _, err := w.Write(resp); err != nil {
 		logging.Log.Error(err, "Can't write response")
 		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
@@ -125,9 +124,10 @@ func getAdmissionResponseForBuild(ar *v1beta1.AdmissionReview, quayIntegration *
 
 	quayRegistryHostname, err := quayIntegration.GetRegistryHostname()
 
-	// TODO: Validate that output is pointing to a ImageStreamTag. If not, do not mutate. In addition, check to see whether we are handling an ImageStreamTag in the same project
 	if build.Spec.CommonSpec.Output.To.Kind != "ImageStreamTag" {
-		return nil
+		return &v1beta1.AdmissionResponse{
+			Allowed: true,
+		}
 	}
 
 	var imageStreamDestinationNamespace = ar.Request.Namespace

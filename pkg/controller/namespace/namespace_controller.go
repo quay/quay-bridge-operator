@@ -308,7 +308,6 @@ func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespace
 		_, repositoryHttpResponse, repositoryErr := quayClient.GetRepository(quayOrganizationName, imageStreamName)
 
 		if repositoryErr != nil {
-
 			logging.Log.Error(err, "Error Retrieving Repository", "Namespace", namespaceName, "Name", imageStreamName, "Status Code", repositoryHttpResponse.StatusCode)
 			return reconcile.Result{}, err
 		}

@@ -54,8 +54,16 @@ type Repository struct {
 	Namespace      string            `json:"namespace"`
 	Image          string            `json:"image"`
 	TagExpirationS int               `json:"tag_expiration_s"`
-	Tags           map[string]string `json:"tags"`
+	Tags           map[string]Tag    `json:"tags"`
 	StatusToken    string            `json:"status_token"`
+}
+
+type Tag struct {
+	ImageId        string `json:"image_id"`
+	TrustEnabled   string `json:"trust_enabled"`
+	Name           string `json:"name"`
+	ManifestDigest string `json:"name"`
+	Size           int    `json:"int"`
 }
 
 type RepositoryRequest struct {
