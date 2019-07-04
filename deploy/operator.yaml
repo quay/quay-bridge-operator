@@ -1,3 +1,21 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: quay-openshift-registry-operator
+  name: quay-openshift-registry-operator
+spec:
+  ports:
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 8443
+  selector:
+    name: quay-openshift-registry-operator
+  sessionAffinity: None
+  type: ClusterIP
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,3 +45,15 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "quay-openshift-registry-operator"
+          ports:
+          - containerPort: 8443
+            protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/webhook/certs
+              name: certs
+              readOnly: true
+      serviceAccount:  quay-openshift-registry-operator
+      volumes:
+        - name: certs
+          secret:
+            secretName: quay-openshift-registry-operator

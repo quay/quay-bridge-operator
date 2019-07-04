@@ -57,6 +57,14 @@ To enable the `QuayIntegration` custom resource within the cluster, execute the 
 $ oc create -f deploy/crds/redhatcop_v1alpha1_quayintegration_crd.yaml
 ```
 
+### Generate a certificate for the application
+
+<TODO>
+
+```
+./utils/webhook-create-signed-cert.sh --namespace <operator_namespace> --service quay-openshift-registry-operator --secret quay-openshift-registry-operator
+```
+
 ### Operator Deployment
 
 The operator can be deployed in any namespace. Create or utilize an existing namespace (can be the same namespace that was previously created).
@@ -69,10 +77,58 @@ Now, execute the following command to add the permissions to the cluster and dep
 
 ```
 $ oc create -f deploy/service_account.yaml
-$ oc create -f deploy/cluster_role.yaml
-$ oc create -f deploy/cluster_role_binding.yaml
+$ oc create -f deploy/clusterrole.yaml
+$ oc create -f deploy/clusterrole_binding.yaml
 $ oc create -f deploy/operator.yaml
 ```
+
+### Setup the MutatingWebhookConfiguration
+
+
+A [Mutating Webhook Configuration]() is an Admission Controller that....
+
+
+#### Enable the Admission Plugin
+
+On each OpenShift master, add the following to the `/etc/origin/master/master-config.yaml` file
+
+```
+admissionConfig:
+  pluginConfig:
+    MutatingAdmissionWebhook:
+      configuration:
+        apiVersion: apiserver.config.k8s.io/v1alpha1
+        kubeConfigFile: /dev/null
+        kind: WebhookAdmission
+    ValidatingAdmissionWebhook:
+      configuration:
+        apiVersion: apiserver.config.k8s.io/v1alpha1
+        kubeConfigFile: /dev/null
+        kind: WebhookAdmission
+```
+
+Restart the OpenShift API and Controller
+
+```
+/usr/local/bin/master-restart api && /usr/local/bin/master-restart controllers
+```
+
+
+Get the CA bundle for the cluster
+
+```
+oc get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
+```
+
+Update the `<CA_BUNDLE>` value within the [deploy/mutatingwebhookconfiguration.yaml](deploy/mutatingwebhookconfiguration.yaml) file 
+
+Add the Mutating Webhook Configuration to the cluster
+
+```
+oc create -f deploy/mutatingwebhookconfiguration.yaml
+```
+
+
 
 ### Create the QuayIntegration Custom Resource
 
@@ -87,7 +143,7 @@ metadata:
   name: example-quayintegration
 spec:
   clusterID: openshift
-  credentialsSecretName: <NAMESPACE>/<SECRET>
+  credentialsSecretName: cat<NAMESPACE>/<SECRET>
   quayHostname: https://<QUAY_URL>
 ```
 

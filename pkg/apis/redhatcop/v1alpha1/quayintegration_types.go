@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/utils"
@@ -19,6 +20,8 @@ type QuayIntegrationSpec struct {
 	CredentialsSecretName string   `json:"credentialsSecretName"`
 	OrganizationPrefix    string   `json:"organizationPrefix,omitempty"`
 	QuayHostname          string   `json:"quayHostname"`
+	InsecureRegistry      bool     `json:"insecureRegistry,omitempty"`
+	ScheduledImageStreamImport      bool     `json:"scheduledImageStreamImport,omitempty"`
 	BlacklistNamespaces   []string `json:"blacklistNamespaces,omitempty"`
 	WhitelistNamespaces   []string `json:"whitelistNamespaces,omitempty"`
 }
@@ -99,4 +102,14 @@ func (qi *QuayIntegration) IsAllowedNamespace(namespace string) bool {
 	}
 
 	return true
+}
+
+func (qi *QuayIntegration) GetRegistryHostname() (string, error) {
+	quayURL, err := url.Parse(qi.Spec.QuayHostname)
+
+	if err != nil {
+		return "", err
+	}
+
+	return quayURL.Host, nil
 }

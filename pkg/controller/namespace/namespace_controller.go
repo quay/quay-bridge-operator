@@ -76,6 +76,30 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// Retriggers a reconcilation of a namespace upon a change to an ImageStream within a namespace. Currently only supports adding repositories to Quay
+	imageStreamToNamespace := handler.ToRequestsFunc(
+		func(a handler.MapObject) []reconcile.Request {
+			res := []reconcile.Request{}
+
+			is := a.Object.(*imagev1.ImageStream)
+			res = append(res, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name: is.GetNamespace(),
+				},
+			})
+
+			return res
+
+		})
+
+	// Watch for changes to ImageStreams and trigger namespace reconcile
+	err = c.Watch(&source.Kind{Type: &imagev1.ImageStream{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: imageStreamToNamespace,
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

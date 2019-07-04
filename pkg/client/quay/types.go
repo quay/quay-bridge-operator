@@ -19,8 +19,8 @@ type Organization struct {
 }
 
 type OrganizationRequest struct {
-	Name string `json:"name"`
-	//	Email string `json:"email,omitempty"`
+	Name  string `json:"name"`
+	Email string `json:"email,omitempty"`
 }
 
 type PrototypesResponse struct {

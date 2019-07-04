@@ -4,12 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"crypto/tls"
 
+	buildv1 "github.com/openshift/api/build/v1"
 	imagev1 "github.com/openshift/api/image/v1"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
@@ -19,7 +20,10 @@ import (
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/controller"
+	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/webhook"
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -47,6 +51,14 @@ func main() {
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+
+	// Add Webhook Flags
+	var webhookCrtFile, webhookKeyFile string
+	var webhookSslDisable bool
+
+	pflag.StringVar(&webhookCrtFile, "webhookCertFile", "/etc/webhook/certs/cert.pem", "File containing the x509 Certificate for HTTPS.")
+	pflag.StringVar(&webhookKeyFile, "webhookKeyFile", "/etc/webhook/certs/key.pem", "File containing the x509 Private Key for HTTPS.")
+	pflag.BoolVar(&webhookSslDisable, "webhookSslDisable", false, "Disable Exposing Wehook via SSL (Developer use only).")
 
 	pflag.Parse()
 
@@ -110,6 +122,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := buildv1.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
 	// Setup all Controllers if not running in Webhook only mode
 
 	_, webhookEnvVarFound := os.LookupEnv(constants.WebHookOnlyModeEnabledEnvVar)
@@ -129,6 +146,62 @@ func main() {
 		log.Info(err.Error())
 	}
 
+	// Enable Webhook support
+	_, disableWebhookEnv := os.LookupEnv(constants.DisableWebhookEnvVar)
+
+	if !disableWebhookEnv {
+
+		log.Info("Starting Webhook server")
+
+		codecs := serializer.NewCodecFactory(mgr.GetScheme())
+
+		var whsvr *webhook.WebhookServer
+
+		if !webhookSslDisable {
+
+			pair, err := tls.LoadX509KeyPair(webhookCrtFile, webhookKeyFile)
+			if err != nil {
+				log.Error(err, "Failed to load key pair")
+				os.Exit(1)
+			}
+
+			whsvr = &webhook.WebhookServer{
+				Server: &http.Server{
+					Addr:      ":8443",
+					TLSConfig: &tls.Config{Certificates: []tls.Certificate{pair}},
+				},
+				Deserializer: codecs.UniversalDeserializer(),
+				Client:       mgr.GetClient(),
+			}
+		} else {
+			whsvr = &webhook.WebhookServer{
+				Server: &http.Server{
+					Addr: ":8080",
+				},
+				Deserializer: codecs.UniversalDeserializer(),
+				Client:       mgr.GetClient(),
+			}
+		}
+
+		// define http server and server handler
+		mux := http.NewServeMux()
+		mux.HandleFunc("/admissionwebhook", whsvr.Handle)
+		whsvr.Server.Handler = mux
+
+		// start webhook server in new routine
+		go func() {
+			if webhookSslDisable {
+				if err := whsvr.Server.ListenAndServe(); err != nil {
+					log.Error(err, "Failed to listen and serve webhook server")
+				}
+			} else {
+				if err := whsvr.Server.ListenAndServeTLS("", ""); err != nil {
+					log.Error(err, "Failed to listen and serve webhook server")
+				}
+			}
+		}()
+	}
+
 	log.Info("Starting the Cmd.")
 
 	// Start the Cmd
@@ -136,4 +209,5 @@ func main() {
 		log.Error(err, "Manager exited non-zero")
 		os.Exit(1)
 	}
+
 }

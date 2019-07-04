@@ -9,7 +9,7 @@ spec:
     listKind: QuayIntegrationList
     plural: quayintegrations
     singular: quayintegration
-  scope: Namespaced
+  scope: Cluster
   subresources:
     status: {}
   validation:
@@ -37,10 +37,14 @@ spec:
               type: string
             credentialsSecretName:
               type: string
+            insecureRegistry:
+              type: boolean
             organizationPrefix:
               type: string
             quayHostname:
               type: string
+            scheduledImageStreamImport:
+              type: boolean
             whitelistNamespaces:
               items:
                 type: string

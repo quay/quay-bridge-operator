@@ -43,7 +43,8 @@ func (c *QuayClient) GetOrganizationByname(orgName string) (Organization, *http.
 func (c *QuayClient) CreateOrganization(name string) (StringValue, *http.Response, error) {
 
 	newOrganization := OrganizationRequest{
-		Name: name,
+		Name:  name,
+		Email: fmt.Sprintf("%s@redhat.com", name),
 	}
 
 	req, err := c.newRequest("POST", "/api/v1/organization/", newOrganization)
@@ -193,13 +194,16 @@ func (c *QuayClient) do(req *http.Request, v interface{}) (*http.Response, error
 		if _, ok := v.(*StringValue); ok {
 			responseData, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				return nil, err
+				return resp, err
 			}
 			responseObject := v.(*StringValue)
 			responseObject.Value = string(responseData)
 
 		} else {
 			err = json.NewDecoder(resp.Body).Decode(v)
+			if err != nil {
+				return resp, err
+			}
 		}
 
 	}

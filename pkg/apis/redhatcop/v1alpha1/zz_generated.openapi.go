@@ -92,6 +92,18 @@ func schema_pkg_apis_redhatcop_v1alpha1_QuayIntegrationSpec(ref common.Reference
 							Format: "",
 						},
 					},
+					"insecureRegistry": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"scheduledImageStreamImport": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
 					"blacklistNamespaces": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
