@@ -7,15 +7,13 @@ import (
 	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
-
-var log = logf.Log.WithName("controller_quayintegration")
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -69,8 +67,8 @@ type ReconcileQuayIntegration struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileQuayIntegration) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling QuayIntegration")
+
+	logging.Log.Info("Reconciling QuayIntegration", "Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	// Fetch the QuayIntegration instance
 	instance := &redhatcopv1alpha1.QuayIntegration{}

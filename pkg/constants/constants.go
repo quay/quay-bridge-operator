@@ -1,5 +1,7 @@
 package constants
 
+import "time"
+
 const (
 	AnnotationBase                                   = "quay-registry-operator.redhatcop.redhat.io"
 	OrganizationPrefix                               = "openshift"
@@ -15,4 +17,5 @@ const (
 	BuildOperatorManagedAnnotation                   = AnnotationBase + "/quay-registry-operator-managed"
 	BuildDestinationImageStreamAnnotation            = AnnotationBase + "/destination-imagestream"
 	BuildDestinationImageStreamTagImportedAnnotation = AnnotationBase + "/destination-imagestreamtag-imported"
+	RequeuePeriod                                    = time.Second * 5
 )

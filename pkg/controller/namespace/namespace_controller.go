@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"net/url"
-	"time"
 
 	"fmt"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
 	qclient "github.com/redhat-cop/quay-openshift-registry-operator/pkg/client/quay"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
+	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/core"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/credentials"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/k8sutils"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
@@ -59,7 +59,9 @@ func newReconciler(mgr manager.Manager, k8sclient kubernetes.Interface) reconcil
 
 	reconcilerBase := util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetRecorder("namespace-controller"))
 
-	return &ReconcileNamespace{reconcilerBase: reconcilerBase, k8sclient: k8sclient}
+	coreComponents := core.NewCoreComponents(reconcilerBase)
+
+	return &ReconcileNamespace{k8sclient: k8sclient, coreComponents: coreComponents}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -108,8 +110,8 @@ var _ reconcile.Reconciler = &ReconcileNamespace{}
 
 // ReconcileNamespace reconciles a QuayIntegration object
 type ReconcileNamespace struct {
-	reconcilerBase util.ReconcilerBase
 	k8sclient      kubernetes.Interface
+	coreComponents core.CoreComponents
 }
 
 // Reconcile reads that state of the cluster for a QuayIntegration object and makes changes based on the state read
@@ -120,11 +122,12 @@ type ReconcileNamespace struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := logging.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling QuayIntegration")
+
+	logging.Log.Info("Reconciling Namespace", "Name", request.Name)
+
 	// Fetch the Namespace instance
 	instance := &corev1.Namespace{}
-	err := r.reconcilerBase.GetClient().Get(context.TODO(), request.NamespacedName, instance)
+	err := r.coreComponents.ReconcilerBase.GetClient().Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -139,15 +142,22 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 	// Find the Current Registered QuayIntegration objects
 	quayIntegrations := redhatcopv1alpha1.QuayIntegrationList{}
 
-	err = r.reconcilerBase.GetClient().List(context.TODO(), &client.ListOptions{}, &quayIntegrations)
+	err = r.coreComponents.ReconcilerBase.GetClient().List(context.TODO(), &client.ListOptions{}, &quayIntegrations)
 
 	if err != nil {
-		return reconcile.Result{}, err
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:  instance,
+			Error:   err,
+			Message: "Error Retrieving QuayIntegration",
+		})
 	}
 
 	if len(quayIntegrations.Items) != 1 {
-		logging.Log.Info("No QuayIntegrations defined or more than 1 integration present")
-		return reconcile.Result{}, nil
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:  instance,
+			Message: "No QuayIntegrations defined or more than 1 integration present",
+			Reason:  "ConfigrurationError",
+		})
 	}
 
 	quayIntegration := *&quayIntegrations.Items[0]
@@ -156,35 +166,53 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 	validNamespace := quayIntegration.IsAllowedNamespace(instance.Name)
 
 	if !validNamespace {
+
+		// Not a synchronized namespace
 		return reconcile.Result{}, nil
 	}
 
 	if len(quayIntegration.Spec.CredentialsSecretName) == 0 {
-		err := fmt.Errorf("Required parameter 'CredentialsSecretName' not found")
-		logging.Log.Error(err, "Required parameter 'CredentialsSecretName' not found")
 
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, err
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:  instance,
+			Message: "Required parameter 'CredentialsSecretName' not found",
+			Reason:  "ConfigrurationError",
+		})
+
 	}
 
 	secretNamespace, secretName, secretError := cache.SplitMetaNamespaceKey(quayIntegration.Spec.CredentialsSecretName)
 
 	if secretError != nil {
-		logging.Log.Error(err, "Error Parsing Quay Integration Secret Name")
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, err
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:  instance,
+			Message: "Error Parsing Quay Integration Secret Name",
+			Reason:  "ConfigrurationError",
+			Error:   secretError,
+		})
+
 	}
 
 	secretCredential := &corev1.Secret{}
 
-	err = r.reconcilerBase.GetClient().Get(context.TODO(), types.NamespacedName{Namespace: secretNamespace, Name: secretName}, secretCredential)
+	err = r.coreComponents.ReconcilerBase.GetClient().Get(context.TODO(), types.NamespacedName{Namespace: secretNamespace, Name: secretName}, secretCredential)
 
 	if err != nil {
-		logging.Log.Error(err, "Error Locating Quay Integration Secret")
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, err
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       instance,
+			Message:      "Error Locating Quay Integration Secret",
+			Reason:       "ConfigrurationError",
+			KeyAndValues: []interface{}{"Namespace", secretNamespace, "Secret", secretName},
+		})
 	}
 
 	if _, ok := secretCredential.Data[constants.QuaySecretCredentialTokenKey]; !ok {
-		logging.Log.Error(fmt.Errorf("Credential Secret does not contain key 'token'"), "Credential Secret does not contain key 'token'")
-		return reconcile.Result{}, err
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       instance,
+			Message:      "Credential Secret does not contain key 'token'",
+			Reason:       "ConfigrurationError",
+			KeyAndValues: []interface{}{"Namespace", secretNamespace, "Secret", secretName},
+		})
 	}
 
 	authToken := string(secretCredential.Data[constants.QuaySecretCredentialTokenKey])
@@ -205,17 +233,21 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 
 		// Remove Resources
-		result, err := r.cleanupResources(request, quayClient, quayOrganizationName)
+		result, err := r.cleanupResources(request, instance, quayClient, quayOrganizationName)
 
 		if err != nil {
 			return result, err
 		}
 
 		util.RemoveFinalizer(instance, constants.NamespaceFinalizer)
-		err = r.reconcilerBase.GetClient().Update(context.TODO(), instance)
+		err = r.coreComponents.ReconcilerBase.GetClient().Update(context.TODO(), instance)
 		if err != nil {
-			logging.Log.Error(err, "Unable to update namespace", "namespace", instance.Name)
-			return reconcile.Result{}, err
+			return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       instance,
+				Message:      "Unable to update namespace",
+				KeyAndValues: []interface{}{"Namespace", instance.Name},
+				Error:        err,
+			})
 		}
 		return reconcile.Result{}, nil
 
@@ -234,16 +266,20 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 
 		util.AddFinalizer(instance, constants.NamespaceFinalizer)
-		err := r.reconcilerBase.GetClient().Update(context.TODO(), instance)
+		err := r.coreComponents.ReconcilerBase.GetClient().Update(context.TODO(), instance)
 		if err != nil {
-			logging.Log.Error(err, "Unable to update namespace", "namespace", instance.Name)
-			return reconcile.Result{}, err
+			return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       instance,
+				Message:      "Unable to update namespace",
+				KeyAndValues: []interface{}{"Namespace", instance.Name},
+				Error:        err,
+			})
 		}
 		return reconcile.Result{}, nil
 	}
 
 	// Setup Resources
-	result, err := r.setupResources(request, instance.Name, quayClient, quayOrganizationName, quayIntegration.Spec.ClusterID, quayIntegration.Spec.QuayHostname)
+	result, err := r.setupResources(request, instance, quayClient, quayOrganizationName, quayIntegration.Spec.ClusterID, quayIntegration.Spec.QuayHostname)
 
 	if err != nil {
 		return result, err
@@ -253,12 +289,16 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 
 }
 
-func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespaceName string, quayClient *qclient.QuayClient, quayOrganizationName string, quayName string, quayHostname string) (reconcile.Result, error) {
+func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string, quayName string, quayHostname string) (reconcile.Result, error) {
 	_, organizationResponse, organizationError := quayClient.GetOrganizationByname(quayOrganizationName)
 
-	if organizationError != nil {
-		logging.Log.Error(fmt.Errorf("Error occurred retrieving Organization"), "Error occurred retrieving Organization")
-		return reconcile.Result{}, organizationError
+	if organizationError.Error != nil {
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error occurred retrieving Quay Organization",
+			KeyAndValues: []interface{}{"Organization", quayOrganizationName},
+			Error:        organizationError.Error,
+		})
 	}
 
 	// Check to see if Organization Exists (Response Code)
@@ -269,20 +309,28 @@ func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespace
 
 		_, createOrganizationResponse, createOrganizationError := quayClient.CreateOrganization(quayOrganizationName)
 
-		if createOrganizationError != nil || createOrganizationResponse.StatusCode != 201 {
-			logging.Log.Error(fmt.Errorf("Error occurred creating Organization"), "Error occurred creating Organization", "Status Code", createOrganizationResponse.StatusCode)
-			return reconcile.Result{Requeue: true}, createOrganizationError
+		if createOrganizationError.Error != nil || createOrganizationResponse.StatusCode != 201 {
+			return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error occurred creating Quay Organization",
+				KeyAndValues: []interface{}{"Status Code", createOrganizationResponse.StatusCode},
+				Error:        organizationError.Error,
+			})
 		}
 
 	} else if organizationResponse.StatusCode != 200 {
-		logging.Log.Error(organizationError, "Error occurred retrieving Organization")
-		return reconcile.Result{Requeue: true}, organizationError
+
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error occurred retrieving Quay Organization",
+			KeyAndValues: []interface{}{"Organization", quayOrganizationName},
+		})
 	}
 
 	// Create Default Permissions
 	for quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue := range QuayServiceAccountPermissionMatrix {
 
-		robotAccountResult, robotAccountErr := r.createRobotAccountAssociateToSA(request, namespaceName, quayClient, quayOrganizationName, quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue, quayName, quayHostname)
+		robotAccountResult, robotAccountErr := r.createRobotAccountAssociateToSA(request, namespace, quayClient, quayOrganizationName, quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue, quayName, quayHostname)
 
 		if robotAccountErr != nil {
 			return robotAccountResult, robotAccountErr
@@ -293,23 +341,32 @@ func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespace
 	// Synchronize Namespaces
 	imageStreams := imagev1.ImageStreamList{}
 
-	err := r.reconcilerBase.GetClient().List(context.TODO(), &client.ListOptions{Namespace: namespaceName}, &imageStreams)
+	err := r.coreComponents.ReconcilerBase.GetClient().List(context.TODO(), &client.ListOptions{Namespace: namespace.Name}, &imageStreams)
 
 	if err != nil {
-		logging.Log.Error(err, "Error Retrieving ImageStreams for Namespace", "Namespace", namespaceName)
-		return reconcile.Result{Requeue: true}, err
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error Retrieving ImageStreams for Namespace",
+			KeyAndValues: []interface{}{"Namespace", namespace.Name},
+			Error:        err,
+		})
+
 	}
 
 	for _, imageStream := range imageStreams.Items {
-		logging.Log.Info("ImageStream Found in Namespace", "Namespace", namespaceName, "Name", imageStream.Name)
 
 		imageStreamName := imageStream.Name
 		// Check if Repository Exists
 		_, repositoryHttpResponse, repositoryErr := quayClient.GetRepository(quayOrganizationName, imageStreamName)
 
-		if repositoryErr != nil {
-			logging.Log.Error(err, "Error Retrieving Repository", "Namespace", namespaceName, "Name", imageStreamName, "Status Code", repositoryHttpResponse.StatusCode)
-			return reconcile.Result{}, err
+		if repositoryErr.Error != nil {
+			return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error Retrieving Repository",
+				KeyAndValues: []interface{}{"Namespace", namespace.Name, "Name", imageStreamName, "Status Code", repositoryHttpResponse.StatusCode},
+				Error:        repositoryErr.Error,
+			})
+
 		}
 
 		// If an Repository reports back that it cannot be found or permission dened
@@ -318,15 +375,22 @@ func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespace
 
 			_, createRepositoryResponse, createRepositoryErr := quayClient.CreateRepository(quayOrganizationName, imageStreamName)
 
-			if createRepositoryErr != nil || createRepositoryResponse.StatusCode != 201 {
-				logging.Log.Error(fmt.Errorf("Error occurred creating repository"), "Error occurred creating repository", "Status Code", createRepositoryResponse.StatusCode)
-				return reconcile.Result{Requeue: true}, createRepositoryErr
+			if createRepositoryErr.Error != nil || createRepositoryResponse.StatusCode != 201 {
+				return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+					Object:       namespace,
+					Message:      "Error occurred creating Quay Repository",
+					KeyAndValues: []interface{}{"Quay Repository", fmt.Sprintf("%s/%s", quayOrganizationName, imageStreamName), "Status Code", createRepositoryResponse.StatusCode},
+					Error:        createRepositoryErr.Error,
+				})
+
 			}
 
 		} else if repositoryHttpResponse.StatusCode != 200 {
-			logging.Log.Error(err, "Error Retrieving Repository for Namespace", "Namespace", namespaceName, "Name", imageStreamName)
-			return reconcile.Result{Requeue: true}, err
-
+			return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error Retrieving Repository for Namespace",
+				KeyAndValues: []interface{}{"Quay Repository", fmt.Sprintf("%s/%s", quayOrganizationName, imageStreamName), "Status Code", repositoryHttpResponse.StatusCode},
+			})
 		}
 
 	}
@@ -336,13 +400,17 @@ func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespace
 }
 
 // createRobotAccountAndSecret creates a robot account, creates a secret and adds the secret to the service account
-func (r *ReconcileNamespace) createRobotAccountAssociateToSA(request reconcile.Request, namespaceName string, quayClient *qclient.QuayClient, quayOrganizationName string, serviceAccount qotypes.OpenShiftServiceAccount, role qclient.QuayRole, quayName string, quayHostname string) (reconcile.Result, error) {
+func (r *ReconcileNamespace) createRobotAccountAssociateToSA(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string, serviceAccount qotypes.OpenShiftServiceAccount, role qclient.QuayRole, quayName string, quayHostname string) (reconcile.Result, error) {
 	// Setup Robot Account
 	robotAccount, robotAccountResponse, robotAccountError := quayClient.GetOrganizationRobotAccount(quayOrganizationName, string(serviceAccount))
 
-	if robotAccountError != nil {
-		logging.Log.Error(robotAccountError, "Error occurred retrieving robot")
-		return reconcile.Result{}, robotAccountError
+	if robotAccountError.Error != nil {
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error occurred retrieving robot account for Quay Organization",
+			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Robot Account", serviceAccount, "Status Code", robotAccountResponse.StatusCode},
+			Error:        robotAccountError.Error,
+		})
 	}
 
 	// Check to see if Robot Exists
@@ -351,32 +419,49 @@ func (r *ReconcileNamespace) createRobotAccountAssociateToSA(request reconcile.R
 		// Create Robot Account
 		robotAccount, robotAccountResponse, robotAccountError = quayClient.CreateOrganizationRobotAccount(quayOrganizationName, string(serviceAccount))
 
-		if robotAccountError != nil || robotAccountResponse.StatusCode != 201 {
-			logging.Log.Error(robotAccountError, "Error creating robot account", "Robot Account", serviceAccount, "Status Code", robotAccountResponse.StatusCode)
-			return reconcile.Result{Requeue: true}, robotAccountError
+		if robotAccountError.Error != nil || robotAccountResponse.StatusCode != 201 {
+			return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error occurred retrieving robot account for Quay Organization",
+				KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Robot Account", serviceAccount, "Status Code", robotAccountResponse.StatusCode},
+			})
+
 		}
 
 	}
 
 	organizationPrototypes, organizationPrototypesResponse, organizationPrototypesError := quayClient.GetPrototypesByOrganization(quayOrganizationName)
 
-	if organizationPrototypesError != nil {
-		logging.Log.Error(organizationPrototypesError, "Error occurred retrieving Prototypes")
-		return reconcile.Result{}, organizationPrototypesError
+	if organizationPrototypesError.Error != nil {
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error occurred retrieving Prototypes for Quay Organization",
+			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Status Code", robotAccountResponse.StatusCode},
+			Error:        organizationPrototypesError.Error,
+		})
+
 	}
 
 	if organizationPrototypesResponse.StatusCode != 200 {
-		logging.Log.Error(organizationPrototypesError, "Error occurred retrieving Prototypes", "Organization", quayOrganizationName, "Status Code", organizationPrototypesResponse.StatusCode)
-		return reconcile.Result{}, organizationPrototypesError
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error occurred retrieving Prototypes for Quay Organization",
+			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Status Code", robotAccountResponse.StatusCode},
+		})
+
 	}
 
 	if found := qclient.IsRobotAccountInPrototypeByRole(organizationPrototypes.Prototypes, robotAccount.Name, string(role)); !found {
 		// Create Prototype
 		_, robotPrototypeResponse, robotPrototypeError := quayClient.CreateRobotPermissionForOrganization(quayOrganizationName, robotAccount.Name, string(role))
 
-		if robotPrototypeError != nil || robotPrototypeResponse.StatusCode != 200 {
-			logging.Log.Error(robotPrototypeError, "Error occurred creating robot account permissions", "Robot Account", robotAccount.Name, "Role", role, "Status Code", robotPrototypeResponse.StatusCode)
-			return reconcile.Result{}, robotPrototypeError
+		if robotPrototypeError.Error != nil || robotPrototypeResponse.StatusCode != 200 {
+			return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error occurred creating Robot account permissions for Prototype",
+				KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Robot Account", robotAccount.Name, "Prototype", role, "Status Code", robotPrototypeResponse.StatusCode},
+				Error:        robotPrototypeError.Error,
+			})
 		}
 
 	}
@@ -385,40 +470,61 @@ func (r *ReconcileNamespace) createRobotAccountAssociateToSA(request reconcile.R
 	quayURL, quayURLErr := url.Parse(quayHostname)
 
 	if quayURLErr != nil {
-		logging.Log.Error(quayURLErr, "Failed to parse Quay hostname")
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Failed to parse Quay hostname",
+			KeyAndValues: []interface{}{"Hostname", quayHostname},
+			Error:        quayURLErr,
+		})
+
 	}
 
 	// Setup Secret for Quay Robot Account
 	robotSecret, robotSecretErr := credentials.GenerateDockerJsonSecret(utils.GenerateDockerJsonSecretNameForServiceAccount(string(serviceAccount), quayName), quayURL.Host, robotAccount.Name, robotAccount.Token, "")
-	robotSecret.ObjectMeta.Namespace = namespaceName
+	robotSecret.ObjectMeta.Namespace = namespace.Name
 
 	if robotSecretErr != nil {
-		return reconcile.Result{}, robotSecretErr
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Failed to generate Docker JSON Secret for Service Account",
+			KeyAndValues: []interface{}{"Namespace", namespace.Name, "Robot Account", robotAccount.Name, "Service Account", serviceAccount},
+			Error:        robotSecretErr,
+		})
 	}
 
-	robotCreateSecretErr := r.reconcilerBase.CreateOrUpdateResource(nil, namespaceName, robotSecret)
+	robotCreateSecretErr := r.coreComponents.ReconcilerBase.CreateOrUpdateResource(nil, namespace.Name, robotSecret)
 
 	if robotCreateSecretErr != nil {
 		return reconcile.Result{Requeue: true}, robotSecretErr
 	}
 
 	existingServiceAccount := &corev1.ServiceAccount{}
-	serviceAccountErr := r.reconcilerBase.GetClient().Get(context.TODO(), types.NamespacedName{Namespace: namespaceName, Name: string(serviceAccount)}, existingServiceAccount)
+	serviceAccountErr := r.coreComponents.ReconcilerBase.GetClient().Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: string(serviceAccount)}, existingServiceAccount)
 
 	if serviceAccountErr != nil {
-		logging.Log.Error(serviceAccountErr, "Failed to get existing platform service account", "Service Account", string(serviceAccount), "Namespace", namespaceName)
-		return reconcile.Result{Requeue: true}, serviceAccountErr
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Failed to get existing platform service account",
+			KeyAndValues: []interface{}{"Namespace", namespace.Name, "Service Account", serviceAccount},
+			Error:        serviceAccountErr,
+		})
+
 	}
 
 	_, updated := r.updateSecretWithMountablePullSecret(existingServiceAccount, robotSecret.Name)
 
 	if updated {
-		// updatedServiceAccountErr := r.reconcilerBase.GetClient().Update(context.TODO(), existingServiceAccount)
-		updatedServiceAccountErr := r.reconcilerBase.CreateOrUpdateResource(nil, namespaceName, existingServiceAccount)
+
+		updatedServiceAccountErr := r.coreComponents.ReconcilerBase.CreateOrUpdateResource(nil, namespace.Name, existingServiceAccount)
 
 		if updatedServiceAccountErr != nil {
-			logging.Log.Error(serviceAccountErr, "Failed to to updated existing platform service account", "Service Account", string(serviceAccount))
-			return reconcile.Result{Requeue: true}, robotSecretErr
+			return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Failed to to updated existing platform service account",
+				KeyAndValues: []interface{}{"Namespace", namespace.Name, "Service Account", serviceAccount},
+				Error:        updatedServiceAccountErr,
+			})
+
 		}
 	}
 
@@ -426,15 +532,19 @@ func (r *ReconcileNamespace) createRobotAccountAssociateToSA(request reconcile.R
 
 }
 
-func (r *ReconcileNamespace) cleanupResources(request reconcile.Request, quayClient *qclient.QuayClient, quayOrganizationName string) (reconcile.Result, error) {
+func (r *ReconcileNamespace) cleanupResources(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string) (reconcile.Result, error) {
 
 	logging.Log.Info("Deleting Organization", "Organization Name", quayOrganizationName)
 
 	_, organizationResponse, orgniazationError := quayClient.GetOrganizationByname(quayOrganizationName)
 
-	if orgniazationError != nil {
-		logging.Log.Error(fmt.Errorf("Error occurred retrieving Organization"), "Error occurred retrieving Organization")
-		return reconcile.Result{}, orgniazationError
+	if orgniazationError.Error != nil {
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error occurred retrieving Organization",
+			KeyAndValues: []interface{}{"Quay Organization", quayOrganizationName, "Status Code", organizationResponse.StatusCode},
+			Error:        orgniazationError.Error,
+		})
 	}
 
 	// Check to see if Organization Exists (Response Code)
@@ -444,21 +554,31 @@ func (r *ReconcileNamespace) cleanupResources(request reconcile.Request, quayCli
 	} else if organizationResponse.StatusCode == 200 {
 		organizationDeleteResponse, orgniazationDeleteError := quayClient.DeleteOrganization(quayOrganizationName)
 
-		if orgniazationDeleteError != nil {
-			logging.Log.Error(orgniazationDeleteError, "Error occurred deleting Organization", "Status Code", organizationDeleteResponse.StatusCode)
-			return reconcile.Result{Requeue: true}, orgniazationError
+		if orgniazationDeleteError.Error != nil {
+			return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error occurred deleting Organization",
+				KeyAndValues: []interface{}{"Quay Organization", quayOrganizationName, "Status Code", organizationDeleteResponse.StatusCode},
+				Error:        orgniazationDeleteError.Error,
+			})
 		}
 
 		if organizationDeleteResponse.StatusCode != 204 {
-			logging.Log.Error(fmt.Errorf("Error occurred deleting Organization"), "Status Code", organizationDeleteResponse.StatusCode)
-			return reconcile.Result{Requeue: true}, fmt.Errorf("Error occurred deleting Organization")
+			return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error occurred deleting Organization",
+				KeyAndValues: []interface{}{"Quay Organization", quayOrganizationName, "Status Code", organizationDeleteResponse.StatusCode},
+			})
 		}
 
 		return reconcile.Result{}, nil
 
 	} else {
-		logging.Log.Error(orgniazationError, "Error occurred retrieving Organization")
-		return reconcile.Result{Requeue: true}, orgniazationError
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error occurred retrieving Organization",
+			KeyAndValues: []interface{}{"Quay Organization", quayOrganizationName, "Status Code", organizationResponse.StatusCode},
+		})
 	}
 
 }

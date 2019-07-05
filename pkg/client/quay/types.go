@@ -43,19 +43,19 @@ type Prototype struct {
 }
 
 type Repository struct {
-	TrustEnabled   bool              `json:"trust_enabled"`
-	Description    string            `json:"description"`
-	CanAdmin       bool              `json:"can_admin"`
-	CanWrite       bool              `json:"can_write"`
-	IsOrganization bool              `json:"is_organization"`
-	IsStarred      bool              `json:"is_starred"`
-	IsPublic       bool              `json:"is_public"`
-	Name           string            `json:"name"`
-	Namespace      string            `json:"namespace"`
-	Image          string            `json:"image"`
-	TagExpirationS int               `json:"tag_expiration_s"`
-	Tags           map[string]Tag    `json:"tags"`
-	StatusToken    string            `json:"status_token"`
+	TrustEnabled   bool           `json:"trust_enabled"`
+	Description    string         `json:"description"`
+	CanAdmin       bool           `json:"can_admin"`
+	CanWrite       bool           `json:"can_write"`
+	IsOrganization bool           `json:"is_organization"`
+	IsStarred      bool           `json:"is_starred"`
+	IsPublic       bool           `json:"is_public"`
+	Name           string         `json:"name"`
+	Namespace      string         `json:"namespace"`
+	Image          string         `json:"image"`
+	TagExpirationS int            `json:"tag_expiration_s"`
+	Tags           map[string]Tag `json:"tags"`
+	StatusToken    string         `json:"status_token"`
 }
 
 type Tag struct {
@@ -84,6 +84,10 @@ type PrototypeDelegate struct {
 // StringValue represents an object containing a single string
 type StringValue struct {
 	Value string
+}
+
+type QuayApiError struct {
+	Error error
 }
 
 func IsRobotAccountInPrototypeByRole(prototypes []Prototype, robotAccount string, role string) bool {

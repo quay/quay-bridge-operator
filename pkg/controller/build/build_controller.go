@@ -4,19 +4,17 @@ import (
 	"context"
 
 	"strings"
-	"time"
 
 	buildv1 "github.com/openshift/api/build/v1"
 	imagev1 "github.com/openshift/api/image/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util"
-	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
+	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/core"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -42,7 +40,9 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
 	reconcilerBase := util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetRecorder("build-controller"))
 
-	return &ReconcileBuildIntegration{reconcilerBase: reconcilerBase}
+	coreComponents := core.NewCoreComponents(reconcilerBase)
+
+	return &ReconcileBuildIntegration{coreComponents: coreComponents}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -93,7 +93,7 @@ var _ reconcile.Reconciler = &ReconcileBuildIntegration{}
 
 // ReconcileBuildIntegration reconciles a Build object
 type ReconcileBuildIntegration struct {
-	reconcilerBase util.ReconcilerBase
+	coreComponents core.CoreComponents
 }
 
 // Reconcile reads that state of the cluster for a Build object and makes changes based on the state read
@@ -104,13 +104,12 @@ type ReconcileBuildIntegration struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileBuildIntegration) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := logging.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
-	logging.Log.Info("Reconciling Build")
+	logging.Log.Info("Reconciling Build", "Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	// Fetch the Build instance
 	instance := &buildv1.Build{}
-	err := r.reconcilerBase.GetClient().Get(context.TODO(), request.NamespacedName, instance)
+	err := r.coreComponents.ReconcilerBase.GetClient().Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 
@@ -132,8 +131,12 @@ func (r *ReconcileBuildIntegration) Reconcile(request reconcile.Request) (reconc
 
 	// Validate Annotation
 	if len(buildImageStreamComponents) != 2 {
-		reqLogger.Info("Unexpected number of ImageStream Annotation Components", "Component Size", len(buildImageStreamComponents))
-		return reconcile.Result{}, err
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       instance,
+			Message:      "Unexpected number of ImageStream Annotation Components",
+			KeyAndValues: []interface{}{"Namespace", instance.Namespace, "Build", instance.Name, "Annotation", buildImageStreamTagAnnotation, "Expected Size", "2", "Actual Size", len(buildImageStreamComponents)},
+			Reason:       "ProcessingError",
+		})
 	}
 
 	buildImageStreamNamespace := buildImageStreamComponents[0]
@@ -141,8 +144,13 @@ func (r *ReconcileBuildIntegration) Reconcile(request reconcile.Request) (reconc
 	imageNameTagComponents := strings.Split(buildImageStreamComponents[1], ":")
 
 	if len(imageNameTagComponents) != 2 {
-		reqLogger.Info("Unexpected number of ImageStream Name Components", "Component Size", len(imageNameTagComponents))
-		return reconcile.Result{}, err
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       instance,
+			Message:      "Unexpected number of ImageStream Name Components",
+			KeyAndValues: []interface{}{"Namespace", instance.Namespace, "Build", instance.Name, "Annotation", buildImageStreamTagAnnotation, "Actual Size", len(imageNameTagComponents)},
+			Reason:       "ProcessingError",
+		})
+
 	}
 
 	buildImageName := imageNameTagComponents[0]
@@ -150,25 +158,24 @@ func (r *ReconcileBuildIntegration) Reconcile(request reconcile.Request) (reconc
 
 	logging.Log.Info("Importing ImageStream after Build", "ImageStream Namespace", buildImageStreamNamespace, "ImageStream Name", buildImageName, "ImageStream Tag", buildImageTag)
 
-	quayIntegration, found, err := r.getQuayIntegration()
-
-	if !found {
-		logging.Log.Info("No QuayIntegration Resource Found")
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, err
-	}
+	quayIntegration, result, err := r.coreComponents.GetQuayIntegration(instance)
 
 	if err != nil {
-		logging.Log.Error(err, "Error attempting to locate QuayIntegration")
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, err
+		return result, err
 	}
 
 	// First, Get the ImageStream
 	existingImageStream := &imagev1.ImageStream{}
-	err = r.reconcilerBase.GetClient().Get(context.TODO(), types.NamespacedName{Namespace: buildImageStreamNamespace, Name: buildImageName}, existingImageStream)
+	err = r.coreComponents.ReconcilerBase.GetClient().Get(context.TODO(), types.NamespacedName{Namespace: buildImageStreamNamespace, Name: buildImageName}, existingImageStream)
 
 	if err != nil {
-		logging.Log.Error(err, "Unable to locate ImageStream")
-		return reconcile.Result{}, err
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       instance,
+			Message:      "Unable to locate ImageStream",
+			KeyAndValues: []interface{}{"Namespace", buildImageStreamNamespace, "Build", buildImageName},
+			Reason:       "ProcessingError",
+		})
+
 	}
 
 	isi := &imagev1.ImageStreamImport{
@@ -198,39 +205,31 @@ func (r *ReconcileBuildIntegration) Reconcile(request reconcile.Request) (reconc
 		},
 	}
 
-	err = r.reconcilerBase.GetClient().Create(context.TODO(), isi)
+	err = r.coreComponents.ReconcilerBase.GetClient().Create(context.TODO(), isi)
 
 	if err != nil {
-		logging.Log.Error(err, "Error occurred creating ImageStream")
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       instance,
+			Message:      "Error occurred creating ImageStreamImport",
+			KeyAndValues: []interface{}{"Namespace", buildImageStreamNamespace, "ImageStream", buildImageName},
+			Reason:       "ProcessingError",
+			Error:        err,
+		})
 	}
 
 	// Update the Build
 	instance.GetAnnotations()[constants.BuildDestinationImageStreamTagImportedAnnotation] = "true"
 
-	err = r.reconcilerBase.GetClient().Update(context.TODO(), instance)
+	err = r.coreComponents.ReconcilerBase.GetClient().Update(context.TODO(), instance)
 	if err != nil {
-		logging.Log.Error(err, "Unable to update build", "build", instance.Name)
-		return reconcile.Result{}, err
+		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       instance,
+			Message:      "Error occurred updating Build",
+			KeyAndValues: []interface{}{"Namespace", instance.Namespace, "Build", instance.Name},
+			Reason:       "ProcessingError",
+			Error:        err,
+		})
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func (r *ReconcileBuildIntegration) getQuayIntegration() (redhatcopv1alpha1.QuayIntegration, bool, error) {
-
-	// Find the Current Registered QuayIntegration objects
-	quayIntegrations := redhatcopv1alpha1.QuayIntegrationList{}
-
-	err := r.reconcilerBase.GetClient().List(context.TODO(), &client.ListOptions{}, &quayIntegrations)
-
-	if err != nil {
-		return redhatcopv1alpha1.QuayIntegration{}, false, err
-	}
-
-	if len(quayIntegrations.Items) != 1 {
-		logging.Log.Info("No QuayIntegrations defined or more than 1 integration present")
-		return redhatcopv1alpha1.QuayIntegration{}, false, nil
-	}
-
-	return *&quayIntegrations.Items[0], true, nil
 }
