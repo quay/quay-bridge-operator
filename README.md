@@ -192,6 +192,8 @@ The _clusterID_ is a value which should be unique across the entire ecosystem. T
 
 The _credentialsSecretName_ is a NamespacedName value of the secret containing the token that was previously created.
 
+Note: If Quay is using self signed certificates, the property `insecureRegistry: true`
+
 A baseline `QuayIntegration` Custom Resource can be found in _deploy/crds/redhatcop_v1alpha1_quayintegration_cr.yaml_. Update the values for your environment and execute the following command:
 
 ```
