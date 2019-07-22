@@ -51,7 +51,7 @@ The integration between OpenShift and Quay makes extensive use of the Quay RESTF
 
 To complete the process to begin to integrate OpenShift and Quay, several steps are required. Before beginning, ensure that you have the OpenShift Command Line tool installed and that you are logged into OpenShift as a cluster administrator. 
 
-#### Create QuayEcosystem Custom Resource Definition
+#### Create QuayIntegration Custom Resource Definition
 
 The operator makes use of values defined within a `quayintegration` custom resource. For the custom resource to be used with the OpenShift cluster, the Custom Resource Definition must be applied by executing the following commnad:
 
@@ -171,7 +171,7 @@ $ oc create secret generic quay-integration --from-literal=token=<access_token>
 This token will be referenced in the following section.
 
 
-#### Create the QuayEcosystem Custom Resource
+#### Create the QuayIntegration Custom Resource
 
 Finally, to complete the integration between OpenShift and Quay, a `QuayIntegration` custom resource needs to be created.
 
@@ -215,7 +215,7 @@ oc new-project e2e-demo
 
 When a new project is created in OpenShift, a new Organization is created in Quay. From the Quay homepage on the righthand side, confirm that an organization called _openshift_e2e-demo_. 
 
-_Note: The “openshift” value may differ if the clusterId in the QuayEcosystem resource had a different value_
+_Note: The “openshift” value may differ if the clusterId in the QuayIntegration resource had a different value_
 
 Enter the organization and select **Robot Accounts** on the lefthand navigation bar. Three robot accounts should have been created as part of the new project creation process.
 
