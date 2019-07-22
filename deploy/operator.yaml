@@ -33,8 +33,7 @@ spec:
       serviceAccountName: quay-openshift-registry-operator
       containers:
         - name: quay-openshift-registry-operator
-          # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: quay.io/redhat-cop/quay-openshift-registry-operator
           command:
           - quay-openshift-registry-operator
           imagePullPolicy: Always
