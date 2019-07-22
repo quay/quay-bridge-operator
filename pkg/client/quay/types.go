@@ -62,7 +62,7 @@ type Tag struct {
 	ImageId        string `json:"image_id"`
 	TrustEnabled   string `json:"trust_enabled"`
 	Name           string `json:"name"`
-	ManifestDigest string `json:"name"`
+	ManifestDigest string `json:"manifest_digest,omitempty"`
 	Size           int    `json:"int"`
 }
 
