@@ -1,6 +1,9 @@
 Quay OpenShift Registry Operator
 =============================
 
+[![Build Status](https://travis-ci.org/redhat-cop/quay-openshift-registry-operator.svg?branch=master)](https://travis-ci.org/redhat-cop/quay-openshift-registry-operator) [![Docker Repository on Quay](https://quay.io/repository/redhat-cop/quay-openshift-registry-operator/status "Docker Repository on Quay")](https://quay.io/repository/redhat-cop/quay-openshift-registry-operator)
+
+
 Operator responsible for facilitating the utilization of Red Hat Quay as the default image registry for an OpenShift Container Platform environment
 
 ## Overview
