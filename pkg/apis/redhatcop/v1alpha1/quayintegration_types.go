@@ -65,20 +65,8 @@ const ()
 var (
 	defaultBlacklistNamespaces = []string{
 		"default",
-		"kube-public",
-		"kube-service-catalog",
-		"kube-system",
-		"management-infra",
 		"openshift",
-		"openshift-ansible-service-broker",
-		"openshift-console",
-		"openshift-infra",
-		"openshift-logging",
-		"openshift-monitoring",
-		"openshift-node",
-		"openshift-sdn",
-		"openshift-template-service-broker",
-		"openshift-web-console",
+		"management-infra",
 	}
 )
 
@@ -87,6 +75,9 @@ func (qi *QuayIntegration) GenerateQuayOrganizationNameFromNamespace(namespace s
 }
 
 func (qi *QuayIntegration) IsAllowedNamespace(namespace string) bool {
+	if strings.HasPrefix(namespace, "openshift-") || strings.HasPrefix(namespace, "kube-") {
+		return false
+	}
 
 	// Add blacklist namespaces
 	combinedLists := append(defaultBlacklistNamespaces, qi.Spec.BlacklistNamespaces...)
@@ -94,7 +85,7 @@ func (qi *QuayIntegration) IsAllowedNamespace(namespace string) bool {
 	// Remove items in whitelist namespaces
 	combinedLists = utils.RemoveItemsFromSlice(combinedLists, qi.Spec.WhitelistNamespaces)
 
-	// check to see if value exists
+	// Check to see if value exists
 	for _, blacklistNamespace := range combinedLists {
 		if namespace == blacklistNamespace {
 			return false

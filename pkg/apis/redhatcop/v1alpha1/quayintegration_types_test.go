@@ -27,6 +27,24 @@ func TestAllowedNamespaces(t *testing.T) {
 		},
 		{
 			quayIntegration: &QuayIntegration{
+				Spec: QuayIntegrationSpec{},
+			},
+			namespace: "openshift-operator-lifecycle-manager",
+			expected:  false,
+		},
+		{
+			quayIntegration: &QuayIntegration{
+				Spec: QuayIntegrationSpec{
+					WhitelistNamespaces: []string{
+						"openshift-operator-lifecycle-manager",
+					},
+				},
+			},
+			namespace: "openshift-operator-lifecycle-manager",
+			expected:  false,
+		},
+		{
+			quayIntegration: &QuayIntegration{
 				Spec: QuayIntegrationSpec{
 					WhitelistNamespaces: []string{
 						"openshift",
