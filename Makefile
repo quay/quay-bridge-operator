@@ -17,11 +17,20 @@ LDFLAGS := "-X github.com/redhat-cop/quay-openshift-registry-operator/version.Ve
 	-X github.com/redhat-cop/quay-openshift-registry-operator/version.Timestamp=$(BUILD_TIMESTAMP) \
 	-X github.com/redhat-cop/quay-openshift-registry-operator/version.Hostname=$(BUILD_HOSTNAME)"
 
-all: manager
+.PHONY: all
+all: build
 
 # Run tests
 native-test: generate fmt vet
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
+
+.PHONY: build
+build:
+	go build -mod=vendor -o build/_output/bin/quay-openshift-registry-operator ./cmd/manager
+
+.PHONY: vendor
+vendor: 
+	go mod vendor
 
 # Build manager binary
 manager: generate fmt vet
