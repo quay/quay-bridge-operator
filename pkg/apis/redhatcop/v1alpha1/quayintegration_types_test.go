@@ -5,7 +5,6 @@ import (
 )
 
 func TestAllowedNamespaces(t *testing.T) {
-
 	cases := []struct {
 		quayIntegration *QuayIntegration
 		namespace       string
@@ -41,7 +40,7 @@ func TestAllowedNamespaces(t *testing.T) {
 				},
 			},
 			namespace: "openshift-operator-lifecycle-manager",
-			expected:  false,
+			expected:  true,
 		},
 		{
 			quayIntegration: &QuayIntegration{
@@ -77,7 +76,18 @@ func TestAllowedNamespaces(t *testing.T) {
 				},
 			},
 			namespace: "example",
-			expected:  true,
+			expected:  false,
+		},
+		{
+			quayIntegration: &QuayIntegration{
+				Spec: QuayIntegrationSpec{
+					WhitelistNamespaces: []string{
+						"skynet",
+					},
+				},
+			},
+			namespace: "example",
+			expected:  false,
 		},
 	}
 

@@ -67,7 +67,6 @@ type ReconcileQuayIntegration struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileQuayIntegration) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-
 	logging.Log.Info("Reconciling QuayIntegration", "Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	// Fetch the QuayIntegration instance
@@ -78,11 +77,11 @@ func (r *ReconcileQuayIntegration) Reconcile(request reconcile.Request) (reconci
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			return reconcile.Result{}, nil
+			return reconcile.Result{Requeue: false}, nil
 		}
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		return reconcile.Result{Requeue: true}, err
 	}
 
-	return reconcile.Result{}, nil
+	return reconcile.Result{Requeue: true}, nil
 }

@@ -5,8 +5,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/utils"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -60,13 +58,11 @@ func init() {
 	SchemeBuilder.Register(&QuayIntegration{}, &QuayIntegrationList{})
 }
 
-const ()
-
 var (
-	defaultBlacklistNamespaces = []string{
-		"default",
-		"openshift",
-		"management-infra",
+	defaultBlacklistNamespaces = map[string]string{
+		"default":          "default",
+		"openshift":        "openshift",
+		"management-infra": "management-infra",
 	}
 )
 
@@ -74,25 +70,25 @@ func (qi *QuayIntegration) GenerateQuayOrganizationNameFromNamespace(namespace s
 	return fmt.Sprintf("%s_%s", strings.ToLower(qi.Spec.ClusterID), namespace)
 }
 
+// IsAllowedNamespace returns whether a namespace is allowed to be managed.
 func (qi *QuayIntegration) IsAllowedNamespace(namespace string) bool {
-	if strings.HasPrefix(namespace, "openshift-") || strings.HasPrefix(namespace, "kube-") {
-		return false
-	}
-
-	// Add blacklist namespaces
-	combinedLists := append(defaultBlacklistNamespaces, qi.Spec.BlacklistNamespaces...)
-
-	// Remove items in whitelist namespaces
-	combinedLists = utils.RemoveItemsFromSlice(combinedLists, qi.Spec.WhitelistNamespaces)
-
-	// Check to see if value exists
-	for _, blacklistNamespace := range combinedLists {
+	for _, blacklistNamespace := range qi.Spec.BlacklistNamespaces {
 		if namespace == blacklistNamespace {
 			return false
 		}
 	}
 
-	return true
+	for _, whitelistNamespace := range qi.Spec.WhitelistNamespaces {
+		if namespace == whitelistNamespace {
+			return true
+		}
+	}
+
+	if _, ok := defaultBlacklistNamespaces[namespace]; ok || strings.HasPrefix(namespace, "openshift-") || strings.HasPrefix(namespace, "kube-") {
+		return false
+	}
+
+	return len(qi.Spec.WhitelistNamespaces) == 0
 }
 
 func (qi *QuayIntegration) GetRegistryHostname() (string, error) {
