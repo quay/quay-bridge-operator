@@ -2,10 +2,12 @@ package quayintegration
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -31,7 +33,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
 	reconcilerBase := util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetRecorder("quayintegration-controller"))
 
-	return &ReconcileQuayIntegration{reconcilerBase: reconcilerBase}
+	return &ReconcileQuayIntegration{reconcilerBase: reconcilerBase, lastSeenSpec: map[types.NamespacedName]string{}}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -57,6 +59,9 @@ var _ reconcile.Reconciler = &ReconcileQuayIntegration{}
 // ReconcileQuayIntegration reconciles a QuayIntegration object
 type ReconcileQuayIntegration struct {
 	reconcilerBase util.ReconcilerBase
+
+	// Store the last seen `Spec` block for each `QuayIntegration` as performance optimization
+	lastSeenSpec map[types.NamespacedName]string
 }
 
 // Reconcile reads that state of the cluster for a QuayIntegration object and makes changes based on the state read
@@ -67,7 +72,8 @@ type ReconcileQuayIntegration struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileQuayIntegration) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	logging.Log.Info("Reconciling QuayIntegration", "Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	logger := logging.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	logger.Info("Reconciling QuayIntegration")
 
 	// Fetch the QuayIntegration instance
 	instance := &redhatcopv1alpha1.QuayIntegration{}
@@ -83,5 +89,29 @@ func (r *ReconcileQuayIntegration) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{Requeue: true}, err
 	}
 
-	return reconcile.Result{Requeue: true}, nil
+	specBytes, _ := json.Marshal(instance.Spec)
+	if r.lastSeenSpec[request.NamespacedName] == string(specBytes) {
+		logger.Info("No changes to QuayIntegration spec, skipping reconciliation")
+		return reconcile.Result{Requeue: false}, nil
+	}
+
+	instance, err = instance.SetStatus(&redhatcopv1alpha1.QuayIntegrationStatus{})
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+	instance, err = instance.SetStatus(&redhatcopv1alpha1.QuayIntegrationStatus{})
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+	err = r.reconcilerBase.GetClient().Status().Update(context.TODO(), instance)
+	if err != nil {
+		logger.Error(err, "Failed to update QuayIntegration status")
+		return reconcile.Result{Requeue: true}, err
+	}
+	logger.Info("Updated QuayIntegration status")
+
+	specBytes, _ = json.Marshal(instance.Spec)
+	r.lastSeenSpec[request.NamespacedName] = string(specBytes)
+
+	return reconcile.Result{Requeue: false}, nil
 }
