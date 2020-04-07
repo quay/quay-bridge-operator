@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,6 +31,7 @@ type QuayIntegrationStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book.kubebuilder.io/beyond_basics/generating_crd.html
+	LastUpdate string `json:"lastUpdate,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -99,4 +101,10 @@ func (qi *QuayIntegration) GetRegistryHostname() (string, error) {
 	}
 
 	return quayURL.Host, nil
+}
+
+func (qi *QuayIntegration) SetStatus(status *QuayIntegrationStatus) (*QuayIntegration, error) {
+	qi.Status.LastUpdate = time.Now().UTC().String()
+
+	return qi, nil
 }
