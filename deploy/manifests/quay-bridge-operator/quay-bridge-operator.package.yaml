@@ -1,0 +1,5 @@
+channels:
+- currentCSV: quay-bridge-operator.v1.0.0
+  name: alpha
+defaultChannel: alpha
+packageName: quay-bridge-operator
