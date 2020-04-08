@@ -128,10 +128,6 @@ spec:
                 name: quay-bridge-operator
             spec:
               serviceAccountName: quay-bridge-operator
-              # volumes:
-              #   - name: certs
-              #     secret:
-              #       secretName: quay-bridge-operator
               containers:
                 - name: quay-bridge-operator
                   image: quay.io/quay/quay-bridge-operator@sha256:029fd7a5e09e3f564826257dce39cba76e3e1589d8b8ee0dff828699a5e0abef
@@ -145,13 +141,6 @@ spec:
                       value: "quay-bridge-operator"
                     - name: DISABLE_WEBHOOK
                       value: "true"
-                  ports:
-                    - containerPort: 8443
-                      protocol: TCP
-                  # volumeMounts:
-                  #   - mountPath: /etc/webhook/certs
-                  #     name: certs
-                  #     readOnly: true
       permissions:
       - rules:
         - apiGroups:
