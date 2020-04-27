@@ -4,4 +4,4 @@ metadata:
   name: quay-bridge-operator
 spec:
   sourceType: grpc
-  image: quay.io/quay/qbo-catalog@sha256:d390b0583b6071b22fa2c2dbc28ad6e7120432537dfec69566fd28dba5b873a9
+  image: quay.io/projectquay/qbo-catalog@sha256:e276862d309b3ce2cc61dc102d2e0a26190d4c50430ec044f27e5bb6b0a7ed92

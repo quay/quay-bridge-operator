@@ -130,7 +130,7 @@ spec:
               serviceAccountName: quay-bridge-operator
               containers:
                 - name: quay-bridge-operator
-                  image: quay.io/quay/quay-bridge-operator@sha256:029fd7a5e09e3f564826257dce39cba76e3e1589d8b8ee0dff828699a5e0abef
+                  image: quay.io/projectquay/quay-bridge-operator@sha256:029fd7a5e09e3f564826257dce39cba76e3e1589d8b8ee0dff828699a5e0abef
                   imagePullPolicy: Always
                   env:
                     - name: POD_NAME
@@ -160,7 +160,6 @@ spec:
           - watch
           - delete
           - patch
-          - put
         - apiGroups:
           - ""
           - image.openshift.io
