@@ -112,6 +112,74 @@ spec:
     Note: If Quay is using self signed certificates, the property `insecureRegistry: true`
 
     Organizations within Quay should be created for the related namespaces in OpenShift.
+
+    #### MutatingWebhookConfiguration Support
+
+    Support for dynamic interception of API requests that are performed as part of OpenShift’s typical build process is facilitated through a [MutatingWebhookConfiguration](https://docs.openshift.com/container-platform/3.11/architecture/additional_concepts/dynamic_admission_controllers.html). A MutatingWebhookConfiguration allows for invoking an API running within a project on OpenShift when certain API requests are received. In particular, to support Quay’s integration with OpenShift, any new Build requests should be intercepted so that the output can be modified to target Quay instead of OpenShift’s integrated registry. 
+
+    Kubernetes requires that the webhook endpoint is secured via SSL using a certificate that makes use of the certificate authority for the cluster. Fortunately, OpenShift provides support for generating a certificate signed by the cluster. A script is available in the hack directory in the project repository called [webhook-create-signed-cert.sh](hack/webhook-create-signed-cert.sh) that automates the process for requesting a new certificate.
+
+    First, create a `Service` for the Operator's webhook endpoint:
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        name: quay-bridge-operator
+      name: quay-bridge-operator
+      namespace: openshift-operators
+    spec:
+      ports:
+        - name: https
+          port: 443
+          protocol: TCP
+          targetPort: 8443
+      selector:
+        name: quay-bridge-operator
+      sessionAffinity: None
+      type: ClusterIP
+    ```
+
+    Execute the following command to request the certificate:
+
+    ```
+    hack/webhook-create-signed-cert.sh --namespace openshift-operators --secret quay-bridge-operator-webhook-certs --service quay-bridge-operator
+    ```
+
+    The result will place the newly created private key and certificate within a secret within the secret specified. The secret will be mounted into the appropriate located within the operator as declared in the Deployment of the Operator. 
+
+    Once the secret has been created, focus can shift to the `MutatingWebhookConfiguration` (see below). The majority of the content should be in place to apply to the cluster. The one section that requires configuration is the caBundle property. This refers to the Certificate Authority (CA) for the OpenShift environment. The OpenShift CA is available as a _ConfigMap_ within the `kube-system` namespace.
+
+    Execute the following command to retrieve the CA and format the result as a single line so that it can be entered into the MutatingWebhookConfiguration resource:
+
+    ```
+    oc get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
+    ```
+
+    Replace the `${CA_BUNDLE}` variable in the following `MutatingWebhookConfiguration` YAML and create it:
+
+    ```yaml
+    apiVersion: admissionregistration.k8s.io/v1beta1
+    kind: MutatingWebhookConfiguration 
+    metadata:
+      name: quay-bridge-operator
+    webhooks:
+      - name: quayintegration.redhatcop.redhat.io
+        clientConfig: 
+          service:
+            namespace: openshift-operators
+            name: quay-bridge-operator
+            path: "/admissionwebhook"
+          caBundle: "${CA_BUNDLE}"
+        rules: 
+        - operations:  [ "CREATE" ]
+          apiGroups: [ "build.openshift.io" ]
+          apiVersions: ["v1" ]
+          resources: [ "builds" ]
+        failurePolicy: Fail
+    ```
+
+    _Note: Until the operator is running, new requests for builds will fail since the webserver the MutatingWebhookConfiguration invokes is not available and a proper is response is required in order for the object to be persisted in etcd._
   displayName: Quay Bridge Operator
   install:
     spec:
@@ -132,6 +200,10 @@ spec:
                 - name: quay-bridge-operator
                   image: quay.io/projectquay/quay-bridge-operator@sha256:029fd7a5e09e3f564826257dce39cba76e3e1589d8b8ee0dff828699a5e0abef
                   imagePullPolicy: Always
+                  volumeMounts:
+                    - mountPath: /etc/webhook/certs
+                      name: certs
+                      readOnly: true
                   env:
                     - name: POD_NAME
                       valueFrom:
@@ -139,8 +211,13 @@ spec:
                           fieldPath: metadata.name
                     - name: OPERATOR_NAME
                       value: "quay-bridge-operator"
-                    - name: DISABLE_WEBHOOK
-                      value: "true"
+              ports:
+                - containerPort: 8443
+                  protocol: TCP
+              volumes:
+                - name: certs
+                  secret:
+                    secretName: quay-bridge-operator-webhook-certs
       permissions:
       - rules:
         - apiGroups:
