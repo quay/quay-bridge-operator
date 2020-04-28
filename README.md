@@ -95,7 +95,7 @@ Next, Kubernetes requires that the webhook endpoint is secured via SSL using a c
 Execute the following command to request the certificate:
 
 ```
-hack/webhook-create-signed-cert.sh --namespace=<namespace> --secret=quay-openshift-registry-operator --service=quay-openshift-registry-operator
+hack/webhook-create-signed-cert.sh --namespace <namespace> --secret quay-openshift-registry-operator --service quay-openshift-registry-operator
 ```
 
 The result will place the newly created private key and certificate within a secret within the secret specified. The secret will be mounted into the appropriate located within the operator as declared in the Deployment of the operator. 
