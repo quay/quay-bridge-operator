@@ -279,11 +279,11 @@ spec:
         serviceAccountName:  quay-bridge-operator
     strategy: deployment
   installModes:
-  - supported: True
+  - supported: false
     type: OwnNamespace
-  - supported: False
+  - supported: false
     type: SingleNamespace
-  - supported: False
+  - supported: false
     type: MultiNamespace
   - supported: true
     type: AllNamespaces
