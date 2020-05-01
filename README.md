@@ -59,65 +59,6 @@ The operator makes use of values defined within a `quayintegration` custom resou
 oc create -f deploy/crds/redhatcop_v1alpha1_quayintegration_crd.yaml
 ```
 
-#### MutatingWebhookConfiguration Support
-
-Support for dynamic interception of API requests that are performed as part of OpenShift’s typical build process is facilitated through a [MutatingWebhookConfiguration](https://docs.openshift.com/container-platform/3.11/architecture/additional_concepts/dynamic_admission_controllers.html). A MutatingWebhookConfiguration allows for invoking an API running within a project on OpenShift when certain API requests are received. In particular, to support Quay’s integration with OpenShift, any new Build requests should be intercepted so that the output can be modified to target Quay instead of OpenShift’s integrated registry. 
-
-Before a MutatingWebhookConfiguration can be created, there are a number of prerequisites that must be completed. 
-
-First, webhook support must be enabled in the OpenShift cluster by modifying the _master-config.yaml_. On each Master instance, perform the following steps:
-
-1. Edit the `/etc/origin/master/master-config.yaml` file and update the Admission plugins with the following content
-
-```
-admissionConfig:
-  pluginConfig:
-    MutatingAdmissionWebhook:
-      configuration:
-        apiVersion: apiserver.config.k8s.io/v1alpha1
-        kubeConfigFile: /dev/null
-        kind: WebhookAdmission
-    ValidatingAdmissionWebhook:
-      configuration:
-        apiVersion: apiserver.config.k8s.io/v1alpha1
-        kubeConfigFile: /dev/null
-        kind: WebhookAdmission
-```
-
-2. Restart the OpenShift Master and Controllers pods
-
-```
-/usr/local/bin/master-restart api && /usr/local/bin/master-restart controllers
-```
-
-Next, Kubernetes requires that the webhook endpoint is secured via SSL using a certificate that makes use of the certificate authority for the cluster. Fortunately, OpenShift provides support for generating a certificate signed by the cluster. A script is available in the hack directory in the project repository called [webhook-create-signed-cert.sh](hack/webhook-create-signed-cert.sh) that automates the process for requesting a new certificate.
-
-Execute the following command to request the certificate:
-
-```
-hack/webhook-create-signed-cert.sh --namespace <namespace> --secret quay-openshift-registry-operator --service quay-openshift-registry-operator
-```
-
-The result will place the newly created private key and certificate within a secret within the secret specified. The secret will be mounted into the appropriate located within the operator as declared in the Deployment of the operator. 
-
-Once the secret has been created, focus can shift to the MutatingWebhookConfiguration. The baseline can be found in the [deploy/mutatingwebhookconfiguration.yaml](deploy/mutatingwebhookconfiguration.yaml) file. The majority of the content should be in place to apply to the cluster. The one section that requires configuration is the caBundle property. This refers to the Certificate Authority (CA) for the OpenShift environment. The OpenShift CA is available as a _ConfigMap_ within the `kube-system` namespace.
-
-Execute the following command to retrieve the CA and format the result as a single line so that it can be entered into the MutatingWebhookConfiguration resource:
-
-```
-oc get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
-```
-
-Replace the `${CA_BUNDLE}` variable in the `deploy/mutatingwebhookconfiguration.yaml` file.
-
-Add the _MutatingWebhookConfiguration_ to the cluster by executing the following command:
-
-```
-oc create -f deploy/mutatingwebhookconfiguration.yaml
-```
-
-_Note: Until the operator is running, new requests for builds will fail since the webserver the MutatingWebhookConfiguration invokes is not available and a proper is response is required in order for the object to be persisted in etcd._
-
 #### Deploying the Operator
 
 With the CRD available on the cluster, the operator can be deployed. The operator must be deployed within a namespace. Create a new namespace if the desired namespace does not currently exist.
