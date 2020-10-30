@@ -1,20 +1,19 @@
 package core
 
 import (
+	"context"
 	"fmt"
+	"strconv"
 	"time"
 
-	"context"
-
-	"strconv"
-
 	"github.com/redhat-cop/operator-utils/pkg/util"
-	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
+	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
+	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
 )
 
 const (
@@ -107,7 +106,7 @@ func buildKeyAndValueMessage(keyAndValues []interface{}) string {
 
 		switch v := val.(type) {
 		case int:
-			strVal = string(v)
+			strVal = strconv.FormatInt(int64(v), 10)
 		case bool:
 			strVal = strconv.FormatBool(v)
 		case string:
