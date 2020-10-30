@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-
 	baseURL := "https://example-quayecosystem-quay-quay-enterprise.10.9.51.93.nip.io"
 	authToken := "YuXpfsyo677R1viNpjkIc78sx08ldCgnOjxhNbKq"
 
@@ -24,10 +23,9 @@ func main() {
 
 	user, _, err := setupClient.GetUser()
 
-	if err != nil {
+	if err.Error != nil {
 		fmt.Println(err)
 	}
 
 	fmt.Printf("%+v\n", user)
-
 }
