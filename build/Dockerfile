@@ -7,7 +7,6 @@ COPY go.mod go.mod
 COPY go.sum go.sum
 COPY version/ version/
 COPY tools.go tools.go
-COPY vendor/ vendor/
 COPY cmd/ cmd/
 COPY pkg/ pkg/
 

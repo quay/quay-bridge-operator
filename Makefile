@@ -25,11 +25,11 @@ native-test: generate fmt vet
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
 .PHONY: build
-build:
+build: vendor
 	go build -mod=vendor -o build/_output/bin/quay-openshift-registry-operator ./cmd/manager
 
 .PHONY: vendor
-vendor: 
+vendor:
 	go mod vendor
 
 # Build manager binary
