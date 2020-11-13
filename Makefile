@@ -49,7 +49,7 @@ test: generate fmt vet manifests
 
 .PHONY: build
 build:
-	go build -mod=vendor -o build/_output/bin/quay-openshift-registry-operator ./cmd/manager
+	go build -mod=vendor -o build/_output/bin/quay-openshift-registry-operator ./main.go
 
 .PHONY: vendor
 vendor: 

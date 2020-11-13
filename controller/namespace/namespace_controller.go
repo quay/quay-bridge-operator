@@ -10,7 +10,7 @@ import (
 
 	imagev1 "github.com/openshift/api/image/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util"
-	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
+	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/api/redhatcop/v1alpha1"
 	qclient "github.com/redhat-cop/quay-openshift-registry-operator/pkg/client/quay"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/core"

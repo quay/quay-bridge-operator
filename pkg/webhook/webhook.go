@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	buildv1 "github.com/openshift/api/build/v1"
-	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
+	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/api/redhatcop/v1alpha1"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
 	"k8s.io/api/admission/v1beta1"
