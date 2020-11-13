@@ -148,7 +148,7 @@ func (r *NamespaceReconciler) Reconcile(request reconcile.Request) (reconcile.Re
 	// Find the Current Registered QuayIntegration objects
 	quayIntegrations := redhatcopv1alpha1.QuayIntegrationList{}
 
-	err = r.coreComponents.ReconcilerBase.GetClient().List(context.TODO(), &client.ListOptions{}, &quayIntegrations)
+	err = r.coreComponents.ReconcilerBase.GetClient().List(context.TODO(), &quayIntegrations)
 
 	if err != nil {
 		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{
@@ -347,7 +347,7 @@ func (r *NamespaceReconciler) setupResources(request reconcile.Request, namespac
 	// Synchronize Namespaces
 	imageStreams := imagev1.ImageStreamList{}
 
-	err := r.coreComponents.ReconcilerBase.GetClient().List(context.TODO(), &client.ListOptions{Namespace: namespace.Name}, &imageStreams)
+	err := r.coreComponents.ReconcilerBase.GetClient().List(context.TODO(), &imageStreams, &client.ListOptions{Namespace: namespace.Name})
 
 	if err != nil {
 		return r.coreComponents.ManageError(&core.QuayIntegrationCoreError{

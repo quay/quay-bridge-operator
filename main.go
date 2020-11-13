@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/operator-framework/operator-lib/leader"
 	"net/http"
 	"os"
 	"runtime"
@@ -12,11 +13,6 @@ import (
 
 	buildv1 "github.com/openshift/api/build/v1"
 	imagev1 "github.com/openshift/api/image/v1"
-	"github.com/operator-framework/operator-sdk/pkg/leader"
-	"github.com/operator-framework/operator-sdk/pkg/log/zap"
-	"github.com/operator-framework/operator-sdk/pkg/metrics"
-	"github.com/operator-framework/operator-sdk/pkg/restmapper"
-	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	apis "github.com/redhat-cop/quay-openshift-registry-operator/api"
 	"github.com/redhat-cop/quay-openshift-registry-operator/controller"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
@@ -25,9 +21,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	// +kubebuilder:scaffold:imports
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -40,13 +38,13 @@ var log = logf.Log.WithName("cmd")
 func printVersion() {
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
-	log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
+	//log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
 }
 
 func main() {
 	// Add the zap logger flag set to the CLI. The flag set must
 	// be added before calling pflag.Parse().
-	pflag.CommandLine.AddFlagSet(zap.FlagSet())
+	//pflag.CommandLine.AddFlagSet(zap.FlagSet())
 
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
@@ -70,17 +68,9 @@ func main() {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	logf.SetLogger(zap.Logger())
+	logf.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	printVersion()
-
-	/*
-		namespace, err := k8sutil.GetWatchNamespace()
-		if err != nil {
-			log.Error(err, "Failed to get watch namespace")
-			os.Exit(1)
-		}
-	*/
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
@@ -101,7 +91,8 @@ func main() {
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
 		// Namespace:          namespace,
-		MapperProvider:     restmapper.NewDynamicRESTMapper,
+		// MapperProvider:     restmapper.NewDynamicRESTMapper,
+		//MapperProvider:     apiutil.NewDynamicRESTMapper,
 		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 	})
 	if err != nil {
@@ -141,10 +132,10 @@ func main() {
 	}
 
 	// Create Service object to expose the metrics port.
-	_, err = metrics.ExposeMetricsPort(ctx, metricsPort)
-	if err != nil {
-		log.Info(err.Error())
-	}
+	//_, err = metrics.ExposeMetricsPort(ctx, metricsPort)
+	//if err != nil {
+	//	log.Info(err.Error())
+	//}
 
 	// Enable Webhook support
 	_, disableWebhookEnv := os.LookupEnv(constants.DisableWebhookEnvVar)
