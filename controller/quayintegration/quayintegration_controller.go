@@ -48,9 +48,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-//func (r *QuayIntegrationReconciler) SetupWithManager(mgr manager.Manager) error {
-//	controllerruntime.NewControllerManagedBy
-//	return controller.NewControllerManagedBy(mgr).
+//func (r *QuayIntegrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+//
+//	return ctrl.NewControllerManagedBy(mgr).
 //		For(&redhatcopv1alpha1.QuayIntegration{}).
 //		Complete(r)
 //}
