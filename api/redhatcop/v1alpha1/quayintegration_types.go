@@ -34,7 +34,7 @@ type QuayIntegrationStatus struct {
 	LastUpdate string `json:"lastUpdate,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // QuayIntegration is the Schema for the quayintegrations API
 // +k8s:openapi-gen=true
@@ -47,7 +47,7 @@ type QuayIntegration struct {
 	Status QuayIntegrationStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // QuayIntegrationList contains a list of QuayIntegration
 type QuayIntegrationList struct {
