@@ -57,7 +57,7 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, k8sclient kubernetes.Interface) reconcile.Reconciler {
 
-	reconcilerBase := util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetRecorder("namespace-controller"))
+	reconcilerBase := util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor("namespace-controller"))
 
 	coreComponents := core.NewCoreComponents(reconcilerBase)
 

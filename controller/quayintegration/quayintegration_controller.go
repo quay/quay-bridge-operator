@@ -26,7 +26,7 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
-	reconcilerBase := util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetRecorder("quayintegration-controller"))
+	reconcilerBase := util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor("quayintegration-controller"))
 
 	return &QuayIntegrationReconciler{reconcilerBase: reconcilerBase, lastSeenSpec: map[types.NamespacedName]string{}}
 }
