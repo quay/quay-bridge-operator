@@ -28,7 +28,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
 	reconcilerBase := util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetRecorder("quayintegration-controller"))
 
-	return &ReconcileQuayIntegration{reconcilerBase: reconcilerBase, lastSeenSpec: map[types.NamespacedName]string{}}
+	return &QuayIntegrationReconciler{reconcilerBase: reconcilerBase, lastSeenSpec: map[types.NamespacedName]string{}}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -48,11 +48,18 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileQuayIntegration implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileQuayIntegration{}
+//func (r *QuayIntegrationReconciler) SetupWithManager(mgr manager.Manager) error {
+//	controllerruntime.NewControllerManagedBy
+//	return controller.NewControllerManagedBy(mgr).
+//		For(&redhatcopv1alpha1.QuayIntegration{}).
+//		Complete(r)
+//}
 
-// ReconcileQuayIntegration reconciles a QuayIntegration object
-type ReconcileQuayIntegration struct {
+// blank assignment to verify that QuayIntegrationReconciler implements reconcile.Reconciler
+var _ reconcile.Reconciler = &QuayIntegrationReconciler{}
+
+// QuayIntegrationReconciler reconciles a QuayIntegration object
+type QuayIntegrationReconciler struct {
 	reconcilerBase util.ReconcilerBase
 
 	// Store the last seen `Spec` block for each `QuayIntegration` as performance optimization
@@ -66,7 +73,7 @@ type ReconcileQuayIntegration struct {
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileQuayIntegration) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *QuayIntegrationReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	logger := logging.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	logger.Info("Reconciling QuayIntegration")
 

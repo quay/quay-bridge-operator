@@ -61,7 +61,7 @@ func newReconciler(mgr manager.Manager, k8sclient kubernetes.Interface) reconcil
 
 	coreComponents := core.NewCoreComponents(reconcilerBase)
 
-	return &ReconcileNamespace{k8sclient: k8sclient, coreComponents: coreComponents}
+	return &NamespaceReconciler{k8sclient: k8sclient, coreComponents: coreComponents}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -105,11 +105,17 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileQuayIntegration implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileNamespace{}
+//func (r *NamespaceReconciler) SetupWithManager(mgr manager.Manager) error {
+//	return manager.NewControllerManagedBy(mgr).
+//		For(&redhatcopv1alpha1.QuayIntegration{}).
+//		Complete(r)
+//}
 
-// ReconcileNamespace reconciles a QuayIntegration object
-type ReconcileNamespace struct {
+// blank assignment to verify that ReconcileQuayIntegration implements reconcile.Reconciler
+var _ reconcile.Reconciler = &NamespaceReconciler{}
+
+// NamespaceReconciler reconciles a QuayIntegration object
+type NamespaceReconciler struct {
 	k8sclient      kubernetes.Interface
 	coreComponents core.CoreComponents
 }
@@ -121,7 +127,7 @@ type ReconcileNamespace struct {
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *NamespaceReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 
 	logging.Log.Info("Reconciling Namespace", "Name", request.Name)
 
@@ -289,7 +295,7 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 
 }
 
-func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string, quayName string, quayHostname string) (reconcile.Result, error) {
+func (r *NamespaceReconciler) setupResources(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string, quayName string, quayHostname string) (reconcile.Result, error) {
 	_, organizationResponse, organizationError := quayClient.GetOrganizationByname(quayOrganizationName)
 
 	if organizationError.Error != nil {
@@ -400,7 +406,7 @@ func (r *ReconcileNamespace) setupResources(request reconcile.Request, namespace
 }
 
 // createRobotAccountAndSecret creates a robot account, creates a secret and adds the secret to the service account
-func (r *ReconcileNamespace) createRobotAccountAssociateToSA(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string, serviceAccount qotypes.OpenShiftServiceAccount, role qclient.QuayRole, quayName string, quayHostname string) (reconcile.Result, error) {
+func (r *NamespaceReconciler) createRobotAccountAssociateToSA(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string, serviceAccount qotypes.OpenShiftServiceAccount, role qclient.QuayRole, quayName string, quayHostname string) (reconcile.Result, error) {
 	// Setup Robot Account
 	robotAccount, robotAccountResponse, robotAccountError := quayClient.GetOrganizationRobotAccount(quayOrganizationName, string(serviceAccount))
 
@@ -532,7 +538,7 @@ func (r *ReconcileNamespace) createRobotAccountAssociateToSA(request reconcile.R
 
 }
 
-func (r *ReconcileNamespace) cleanupResources(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string) (reconcile.Result, error) {
+func (r *NamespaceReconciler) cleanupResources(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string) (reconcile.Result, error) {
 
 	logging.Log.Info("Deleting Organization", "Organization Name", quayOrganizationName)
 
@@ -583,7 +589,7 @@ func (r *ReconcileNamespace) cleanupResources(request reconcile.Request, namespa
 
 }
 
-func (r *ReconcileNamespace) updateSecretWithMountablePullSecret(serviceAccount *corev1.ServiceAccount, name string) (*corev1.ServiceAccount, bool) {
+func (r *NamespaceReconciler) updateSecretWithMountablePullSecret(serviceAccount *corev1.ServiceAccount, name string) (*corev1.ServiceAccount, bool) {
 
 	updated := false
 
