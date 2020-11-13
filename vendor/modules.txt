@@ -141,7 +141,7 @@ github.com/openshift/api/build/v1
 github.com/openshift/api/image/docker10
 github.com/openshift/api/image/dockerpre012
 github.com/openshift/api/image/v1
-# github.com/operator-framework/operator-sdk v0.8.1-0.20190607203525-cf3aaf10d465 => github.com/operator-framework/operator-sdk v0.8.0
+# github.com/operator-framework/operator-sdk v1.2.0 => github.com/operator-framework/operator-sdk v0.8.0
 ## explicit
 github.com/operator-framework/operator-sdk/pkg/k8sutil
 github.com/operator-framework/operator-sdk/pkg/leader
