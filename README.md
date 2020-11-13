@@ -27,7 +27,7 @@ The following capabilities are enabled through this operator:
 The following requirements must be satisfied prior to setting and configuring the integration between OpenShift and Quay:
 
 * A Red Hat Quay environment with a user with superuser permissions
-* A Red Hat OpenShift Container Platform environment (at least version 3.6 [3.11 recommended]) with cluster-admin permissions on an OpenShift cluster 
+* A Red Hat OpenShift Container Platform environment (at least version 4.3 [4.5 recommended]) with cluster-admin permissions on an OpenShift cluster 
 *	OpenShift Command Line tool (CLI)
 
 ## Setup and Configuration
