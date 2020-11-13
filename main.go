@@ -5,9 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"github.com/operator-framework/operator-lib/leader"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"net/http"
 	"os"
-	"runtime"
 
 	"crypto/tls"
 
@@ -18,8 +19,10 @@ import (
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
 	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/webhook"
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	goruntime "runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -32,12 +35,23 @@ import (
 var (
 	metricsHost       = "0.0.0.0"
 	metricsPort int32 = 8383
+	scheme            = runtime.NewScheme()
 )
 var log = logf.Log.WithName("cmd")
 
+func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+
+	// utilruntime.Must(.AddToScheme(scheme))
+	utilruntime.Must(buildv1.AddToScheme(scheme))
+	utilruntime.Must(imagev1.AddToScheme(scheme))
+	utilruntime.Must(apis.AddToScheme(scheme))
+	// +kubebuilder:scaffold:scheme
+}
+
 func printVersion() {
-	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
-	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
+	log.Info(fmt.Sprintf("Go Version: %s", goruntime.Version()))
+	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", goruntime.GOOS, goruntime.GOARCH))
 	//log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
 }
 
@@ -96,24 +110,6 @@ func main() {
 		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 	})
 	if err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
-
-	log.Info("Registering Components.")
-
-	// Setup Scheme for all resources
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
-
-	if err := imagev1.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
-
-	if err := buildv1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
