@@ -63,7 +63,7 @@ func (wsvr *WebhookServer) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 
-		// Get QuayIngegration
+		// Get QuayIntegration
 		quayIntegration, found, err := wsvr.getQuayIntegration(&ar)
 
 		if !found {
@@ -124,7 +124,7 @@ func getAdmissionResponseForBuild(ar *v1beta1.AdmissionReview, quayIntegration *
 
 	quayRegistryHostname, err := quayIntegration.GetRegistryHostname()
 
-	if build.Spec.CommonSpec.Output.To.Kind != "ImageStreamTag" {
+	if (build.Spec.Strategy.DockerStrategy == nil && build.Spec.Strategy.SourceStrategy == nil) || build.Spec.CommonSpec.Output.To.Kind != "ImageStreamTag" {
 		return &v1beta1.AdmissionResponse{
 			Allowed: true,
 		}
