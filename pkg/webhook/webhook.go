@@ -124,7 +124,7 @@ func getAdmissionResponseForBuild(ar *v1beta1.AdmissionReview, quayIntegration *
 
 	quayRegistryHostname, err := quayIntegration.GetRegistryHostname()
 
-	if buildv1.JenkinsPipelineBuildStrategyType == build.Spec.Strategy.Type || build.Spec.CommonSpec.Output.To == nil || build.Spec.CommonSpec.Output.To.Kind != "ImageStreamTag" {
+	if (build.Spec.Strategy.DockerStrategy == nil && build.Spec.Strategy.SourceStrategy == nil) || build.Spec.CommonSpec.Output.To.Kind != "ImageStreamTag" {
 		return &v1beta1.AdmissionResponse{
 			Allowed: true,
 		}
