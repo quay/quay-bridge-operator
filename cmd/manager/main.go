@@ -56,8 +56,8 @@ func main() {
 	var webhookCrtFile, webhookKeyFile string
 	var webhookSslDisable bool
 
-	pflag.StringVar(&webhookCrtFile, "webhookCertFile", "/etc/webhook/certs/cert.pem", "File containing the x509 Certificate for HTTPS.")
-	pflag.StringVar(&webhookKeyFile, "webhookKeyFile", "/etc/webhook/certs/key.pem", "File containing the x509 Private Key for HTTPS.")
+	pflag.StringVar(&webhookCrtFile, "webhookCertFile", "/etc/webhook/certs/tls.crt", "File containing the x509 Certificate for HTTPS.")
+	pflag.StringVar(&webhookKeyFile, "webhookKeyFile", "/etc/webhook/certs/tls.key", "File containing the x509 Private Key for HTTPS.")
 	pflag.BoolVar(&webhookSslDisable, "webhookSslDisable", false, "Disable Exposing Wehook via SSL (Developer use only).")
 
 	pflag.Parse()
