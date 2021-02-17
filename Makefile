@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
 REGISTRY ?= quay.io
-REPOSITORY ?= $(REGISTRY)/redhat-cop/quay-openshift-registry-operator
+REPOSITORY ?= $(REGISTRY)/quay/quay-bridge-operator
 DEV_TAG ?= dev
 
 IMG := $(REPOSITORY):latest
@@ -12,10 +12,10 @@ BUILD_COMMIT := $(shell ./scripts/build/get-build-commit.sh)
 BUILD_TIMESTAMP := $(shell ./scripts/build/get-build-timestamp.sh)
 BUILD_HOSTNAME := $(shell ./scripts/build/get-build-hostname.sh)
 
-LDFLAGS := "-X github.com/redhat-cop/quay-openshift-registry-operator/version.Version=$(VERSION) \
-	-X github.com/redhat-cop/quay-openshift-registry-operator/version.Vcs=$(BUILD_COMMIT) \
-	-X github.com/redhat-cop/quay-openshift-registry-operator/version.Timestamp=$(BUILD_TIMESTAMP) \
-	-X github.com/redhat-cop/quay-openshift-registry-operator/version.Hostname=$(BUILD_HOSTNAME)"
+LDFLAGS := "-X github.com/quay/quay-bridge-operator/version.Version=$(VERSION) \
+	-X github.com/quay/quay-bridge-operator/version.Vcs=$(BUILD_COMMIT) \
+	-X github.com/quay/quay-bridge-operator/version.Timestamp=$(BUILD_TIMESTAMP) \
+	-X github.com/quay/quay-bridge-operator/version.Hostname=$(BUILD_HOSTNAME)"
 
 .PHONY: all
 all: build
@@ -26,7 +26,7 @@ native-test: generate fmt vet
 
 .PHONY: build
 build:
-	go build -mod=vendor -o build/_output/bin/quay-openshift-registry-operator ./cmd/manager
+	go build -mod=vendor -o build/_output/bin/quay-bridge-operator ./cmd/manager
 
 .PHONY: vendor
 vendor: 
@@ -34,11 +34,11 @@ vendor:
 
 # Build manager binary
 manager: generate fmt vet
-	go build -o build/_output/bin/quay-openshift-registry-operator  -ldflags $(LDFLAGS) github.com/redhat-cop/quay-openshift-registry-operator/cmd/manager
+	go build -o build/_output/bin/quay-bridge-operator  -ldflags $(LDFLAGS) github.com/quay/quay-bridge-operator/cmd/manager
 
 # Build manager binary
 manager-osx: generate fmt vet
-	go build -o build/_output/bin/quay-openshift-registry-operator GOOS=darwin  -ldflags $(LDFLAGS) github.com/redhat-cop/quay-openshift-registry-operator/cmd/manager
+	go build -o build/_output/bin/quay-bridge-operator GOOS=darwin  -ldflags $(LDFLAGS) github.com/quay/quay-bridge-operator/cmd/manager
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet

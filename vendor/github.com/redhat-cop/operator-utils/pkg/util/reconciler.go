@@ -8,7 +8,7 @@ import (
 	"text/template"
 	"time"
 
-	apis "github.com/redhat-cop/operator-utils/pkg/util/apis"
+	apis "github.com/quay/operator-utils/pkg/util/apis"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

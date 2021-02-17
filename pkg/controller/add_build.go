@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/controller/build"
+	"github.com/quay/quay-bridge-operator/pkg/controller/build"
 )
 
 func init() {

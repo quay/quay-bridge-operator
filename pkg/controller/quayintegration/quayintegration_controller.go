@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/redhat-cop/operator-utils/pkg/util"
-	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
+	"github.com/quay/operator-utils/pkg/util"
+	redhatcopv1alpha1 "github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
+	"github.com/quay/quay-bridge-operator/pkg/logging"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	qclient "github.com/redhat-cop/quay-openshift-registry-operator/pkg/client/quay"
+	qclient "github.com/quay/quay-bridge-operator/pkg/client/quay"
 )
 
 func main() {

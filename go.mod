@@ -1,4 +1,4 @@
-module github.com/redhat-cop/quay-openshift-registry-operator
+module github.com/quay/quay-bridge-operator
 
 go 1.14
 
@@ -24,7 +24,7 @@ require (
 	github.com/operator-framework/operator-sdk v0.8.1-0.20190607203525-cf3aaf10d465
 	github.com/pborman/uuid v0.0.0-20180906182336-adf5a7427709 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/redhat-cop/operator-utils v0.0.0-20190530184149-66ee667a40b2
+	github.com/quay/operator-utils v0.0.0-20190530184149-66ee667a40b2
 	github.com/spf13/pflag v1.0.3
 	go.opencensus.io v0.19.2 // indirect
 	go.uber.org/atomic v1.3.2 // indirect

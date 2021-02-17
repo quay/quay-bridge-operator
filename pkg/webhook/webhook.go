@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	buildv1 "github.com/openshift/api/build/v1"
-	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
+	redhatcopv1alpha1 "github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1"
+	"github.com/quay/quay-bridge-operator/pkg/constants"
+	"github.com/quay/quay-bridge-operator/pkg/logging"
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
