@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/quay/operator-utils/pkg/util"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"

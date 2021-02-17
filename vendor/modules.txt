@@ -172,10 +172,10 @@ github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/util
 github.com/prometheus/procfs/nfs
 github.com/prometheus/procfs/xfs
-# github.com/quay/operator-utils v0.0.0-20190530184149-66ee667a40b2
+# github.com/redhat-cop/operator-utils v0.0.0-20190530184149-66ee667a40b2
 ## explicit
-github.com/quay/operator-utils/pkg/util
-github.com/quay/operator-utils/pkg/util/apis
+github.com/redhat-cop/operator-utils/pkg/util
+github.com/redhat-cop/operator-utils/pkg/util/apis
 # github.com/rogpeppe/go-internal v1.2.2
 github.com/rogpeppe/go-internal/modfile
 github.com/rogpeppe/go-internal/module

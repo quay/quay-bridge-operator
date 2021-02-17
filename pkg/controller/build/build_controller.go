@@ -7,7 +7,7 @@ import (
 
 	buildv1 "github.com/openshift/api/build/v1"
 	imagev1 "github.com/openshift/api/image/v1"
-	"github.com/quay/operator-utils/pkg/util"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/quay/quay-bridge-operator/pkg/constants"
 	"github.com/quay/quay-bridge-operator/pkg/core"
 	"github.com/quay/quay-bridge-operator/pkg/logging"
