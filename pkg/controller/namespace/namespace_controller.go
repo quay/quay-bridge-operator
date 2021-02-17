@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	imagev1 "github.com/openshift/api/image/v1"
-	"github.com/quay/operator-utils/pkg/util"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	redhatcopv1alpha1 "github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1"
 	qclient "github.com/quay/quay-bridge-operator/pkg/client/quay"
 	"github.com/quay/quay-bridge-operator/pkg/constants"
