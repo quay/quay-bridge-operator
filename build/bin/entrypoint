@@ -5,7 +5,7 @@
 
 if ! whoami &>/dev/null; then
   if [ -w /etc/passwd ]; then
-    echo "${USER_NAME:-quay-openshift-registry-operator}:x:$(id -u):$(id -g):${USER_NAME:-quay-openshift-registry-operator} user:${HOME}:/sbin/nologin" >> /etc/passwd
+    echo "${USER_NAME:-quay-bridge-operator}:x:$(id -u):$(id -g):${USER_NAME:-quay-bridge-operator} user:${HOME}:/sbin/nologin" >> /etc/passwd
   fi
 fi
 

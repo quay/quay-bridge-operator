@@ -13,9 +13,9 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegration":       schema_pkg_apis_redhatcop_v1alpha1_QuayIntegration(ref),
-		"github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationSpec":   schema_pkg_apis_redhatcop_v1alpha1_QuayIntegrationSpec(ref),
-		"github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationStatus": schema_pkg_apis_redhatcop_v1alpha1_QuayIntegrationStatus(ref),
+		"github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegration":       schema_pkg_apis_redhatcop_v1alpha1_QuayIntegration(ref),
+		"github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationSpec":   schema_pkg_apis_redhatcop_v1alpha1_QuayIntegrationSpec(ref),
+		"github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationStatus": schema_pkg_apis_redhatcop_v1alpha1_QuayIntegrationStatus(ref),
 	}
 }
 
@@ -46,19 +46,19 @@ func schema_pkg_apis_redhatcop_v1alpha1_QuayIntegration(ref common.ReferenceCall
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationSpec"),
+							Ref: ref("github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationStatus"),
+							Ref: ref("github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationSpec", "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationSpec", "github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1.QuayIntegrationStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 

@@ -1,6 +1,6 @@
 sudo: required
 language: go
-go_import_path: github.com/redhat-cop/quay-openshift-registry-operator
+go_import_path: github.com/redhat-cop/quay-bridge-operator
 go:
 - "1.12"
 
@@ -12,14 +12,14 @@ deploy:
     skip_cleanup: true
     script: make travis-latest-deploy
     on:
-      repo: redhat-cop/quay-openshift-registry-operator
+      repo: redhat-cop/quay-bridge-operator
       branch: master
       tags: false
   - provider: script
     skip_cleanup: true
     script: make travis-release-deploy
     on:
-      repo: redhat-cop/quay-openshift-registry-operator
+      repo: redhat-cop/quay-bridge-operator
       branch: master
       tags: true
   - provider: script

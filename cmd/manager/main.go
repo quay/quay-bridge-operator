@@ -17,10 +17,10 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"github.com/operator-framework/operator-sdk/pkg/restmapper"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/controller"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/webhook"
+	"github.com/quay/quay-bridge-operator/pkg/apis"
+	"github.com/quay/quay-bridge-operator/pkg/constants"
+	"github.com/quay/quay-bridge-operator/pkg/controller"
+	"github.com/quay/quay-bridge-operator/pkg/webhook"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -92,7 +92,7 @@ func main() {
 	ctx := context.TODO()
 
 	// Become the leader before proceeding
-	err = leader.Become(ctx, "quay-openshift-registry-operator-lock")
+	err = leader.Become(ctx, "quay-bridge-operator-lock")
 	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)

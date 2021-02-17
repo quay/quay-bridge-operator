@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
+	"github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1"
 )
 
 func init() {

@@ -6,14 +6,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/redhat-cop/operator-utils/pkg/util"
+	"github.com/quay/operator-utils/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	redhatcopv1alpha1 "github.com/redhat-cop/quay-openshift-registry-operator/pkg/apis/redhatcop/v1alpha1"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
+	redhatcopv1alpha1 "github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1"
+	"github.com/quay/quay-bridge-operator/pkg/constants"
+	"github.com/quay/quay-bridge-operator/pkg/logging"
 )
 
 const (

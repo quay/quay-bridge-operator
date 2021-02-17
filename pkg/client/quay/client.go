@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/utils"
+	"github.com/quay/quay-bridge-operator/pkg/utils"
 )
 
 type QuayClient struct {

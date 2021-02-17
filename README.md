@@ -1,7 +1,7 @@
 Quay OpenShift Registry Operator
 =============================
 
-[![Build Status](https://travis-ci.org/redhat-cop/quay-openshift-registry-operator.svg?branch=master)](https://travis-ci.org/redhat-cop/quay-openshift-registry-operator) [![Docker Repository on Quay](https://quay.io/repository/redhat-cop/quay-openshift-registry-operator/status "Docker Repository on Quay")](https://quay.io/repository/redhat-cop/quay-openshift-registry-operator)
+[![Build Status](https://travis-ci.org/quay/quay-bridge-operator.svg?branch=master)](https://travis-ci.org/quay/quay-bridge-operator) [![Docker Repository on Quay](https://quay.io/repository/quay/quay-bridge-operator/status "Docker Repository on Quay")](https://quay.io/repository/quay/quay-bridge-operator)
 
 
 Operator responsible for facilitating the utilization of Red Hat Quay as the default image registry for an OpenShift Container Platform environment
@@ -95,7 +95,7 @@ Next, Kubernetes requires that the webhook endpoint is secured via SSL using a c
 Execute the following command to request the certificate:
 
 ```
-hack/webhook-create-signed-cert.sh --namespace <namespace> --secret quay-openshift-registry-operator --service quay-openshift-registry-operator
+hack/webhook-create-signed-cert.sh --namespace <namespace> --secret quay-bridge-operator --service quay-bridge-operator
 ```
 
 The result will place the newly created private key and certificate within a secret within the secret specified. The secret will be mounted into the appropriate located within the operator as declared in the Deployment of the operator. 

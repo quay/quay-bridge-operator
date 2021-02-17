@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/constants"
-	"github.com/redhat-cop/quay-openshift-registry-operator/pkg/logging"
+	"github.com/quay/quay-bridge-operator/pkg/constants"
+	"github.com/quay/quay-bridge-operator/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
 )
 
