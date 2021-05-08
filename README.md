@@ -1,5 +1,6 @@
-Quay OpenShift Registry Operator
-=============================
+# Quay OpenShift Registry Operator
+
+![CI](https://github.com/quay/quay-bridge-operator/workflows/CI/badge.svg?branch=master)
 
 Operator responsible for facilitating the utilization of Red Hat Quay as the default image registry for an OpenShift Container Platform environment
 
