@@ -1,8 +1,0 @@
-apiVersion: redhatcop.redhat.io/v1alpha1
-kind: QuayIntegration
-metadata:
-  name: example-quayintegration
-spec:
-  clusterID: openshift
-  credentialsSecretName: <NAMESPACE>/<SECRET>
-  quayHostname: https://<QUAY_URL>

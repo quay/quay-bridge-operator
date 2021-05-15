@@ -1,7 +1,7 @@
 package logging
 
 import (
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime"
 )
 
 var Log = logf.Log.WithName("quay-bridge-operator")
