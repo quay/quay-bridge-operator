@@ -6,12 +6,13 @@ import (
 	"strconv"
 	"time"
 
+	quayv1 "github.com/quay/quay-bridge-operator/api/v1"
+
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	redhatcopv1alpha1 "github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1"
 	"github.com/quay/quay-bridge-operator/pkg/constants"
 	"github.com/quay/quay-bridge-operator/pkg/logging"
 )
@@ -65,15 +66,15 @@ func (c *CoreComponents) ManageError(quayIntegrationCoreError *QuayIntegrationCo
 
 }
 
-func (c *CoreComponents) GetQuayIntegration(object runtime.Object) (redhatcopv1alpha1.QuayIntegration, reconcile.Result, error) {
+func (c *CoreComponents) GetQuayIntegration(object runtime.Object) (quayv1.QuayIntegration, reconcile.Result, error) {
 
 	// Find the Current Registered QuayIntegration objects
-	quayIntegrations := redhatcopv1alpha1.QuayIntegrationList{}
+	quayIntegrations := quayv1.QuayIntegrationList{}
 
-	err := c.ReconcilerBase.GetClient().List(context.TODO(), &client.ListOptions{}, &quayIntegrations)
+	err := c.ReconcilerBase.GetClient().List(context.TODO(), &quayIntegrations, &client.ListOptions{})
 
 	if err != nil {
-		return redhatcopv1alpha1.QuayIntegration{}, reconcile.Result{}, err
+		return quayv1.QuayIntegration{}, reconcile.Result{}, err
 	}
 
 	if len(quayIntegrations.Items) != 1 {
@@ -86,7 +87,7 @@ func (c *CoreComponents) GetQuayIntegration(object runtime.Object) (redhatcopv1a
 			Error:        fmt.Errorf("No QuayIntegrations defined or more than 1 integration present"),
 		})
 
-		return redhatcopv1alpha1.QuayIntegration{}, result, err
+		return quayv1.QuayIntegration{}, result, err
 	}
 
 	return *&quayIntegrations.Items[0], reconcile.Result{}, err

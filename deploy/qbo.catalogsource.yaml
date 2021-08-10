@@ -1,7 +1,0 @@
-apiVersion: operators.coreos.com/v1alpha1
-kind: CatalogSource
-metadata:
-  name: quay-bridge-operator
-spec:
-  sourceType: grpc
-  image: quay.io/projectquay/qbo-catalog@sha256:5a56b1d515d6c9a7252dfc69477c88c7cebce3a097cb80822d79395e54ccecf5

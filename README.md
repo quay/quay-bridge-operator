@@ -1,8 +1,6 @@
-Quay OpenShift Registry Operator
-=============================
+# Quay OpenShift Registry Operator
 
-[![Build Status](https://travis-ci.org/quay/quay-bridge-operator.svg?branch=master)](https://travis-ci.org/quay/quay-bridge-operator) [![Docker Repository on Quay](https://quay.io/repository/quay/quay-bridge-operator/status "Docker Repository on Quay")](https://quay.io/repository/quay/quay-bridge-operator)
-
+![CI](https://github.com/quay/quay-bridge-operator/workflows/CI/badge.svg?branch=master)
 
 Operator responsible for facilitating the utilization of Red Hat Quay as the default image registry for an OpenShift Container Platform environment
 
@@ -47,160 +45,83 @@ The integration between OpenShift and Quay makes extensive use of the Quay RESTF
 7.	Review the permissions that will be assigned and then select the **Authorize Application** button
 8.	Take note of the generated Access Token as it will be needed in the following section
 
+
+
 ### OpenShift Setup
-
-To complete the process to begin to integrate OpenShift and Quay, several steps are required. Before beginning, ensure that you have the OpenShift Command Line tool installed and that you are logged into OpenShift as a cluster administrator. 
-
-#### Create QuayIntegration Custom Resource Definition
-
-The operator makes use of values defined within a `quayintegration` custom resource. For the custom resource to be used with the OpenShift cluster, the Custom Resource Definition must be applied by executing the following commnad:
-
-```
-oc create -f deploy/crds/redhatcop_v1alpha1_quayintegration_crd.yaml
-```
-
-#### MutatingWebhookConfiguration Support
-
-Support for dynamic interception of API requests that are performed as part of OpenShift’s typical build process is facilitated through a [MutatingWebhookConfiguration](https://docs.openshift.com/container-platform/3.11/architecture/additional_concepts/dynamic_admission_controllers.html). A MutatingWebhookConfiguration allows for invoking an API running within a project on OpenShift when certain API requests are received. In particular, to support Quay’s integration with OpenShift, any new Build requests should be intercepted so that the output can be modified to target Quay instead of OpenShift’s integrated registry. 
-
-Before a MutatingWebhookConfiguration can be created, there are a number of prerequisites that must be completed. 
-
-First, webhook support must be enabled in the OpenShift cluster by modifying the _master-config.yaml_. On each Master instance, perform the following steps:
-
-1. Edit the `/etc/origin/master/master-config.yaml` file and update the Admission plugins with the following content
-
-```
-admissionConfig:
-  pluginConfig:
-    MutatingAdmissionWebhook:
-      configuration:
-        apiVersion: apiserver.config.k8s.io/v1alpha1
-        kubeConfigFile: /dev/null
-        kind: WebhookAdmission
-    ValidatingAdmissionWebhook:
-      configuration:
-        apiVersion: apiserver.config.k8s.io/v1alpha1
-        kubeConfigFile: /dev/null
-        kind: WebhookAdmission
-```
-
-2. Restart the OpenShift Master and Controllers pods
-
-```
-/usr/local/bin/master-restart api && /usr/local/bin/master-restart controllers
-```
-
-Next, Kubernetes requires that the webhook endpoint is secured via SSL using a certificate that makes use of the certificate authority for the cluster. Fortunately, OpenShift provides support for generating a certificate signed by the cluster. A script is available in the hack directory in the project repository called [webhook-create-signed-cert.sh](hack/webhook-create-signed-cert.sh) that automates the process for requesting a new certificate.
-
-Execute the following command to request the certificate:
-
-```
-hack/webhook-create-signed-cert.sh --namespace <namespace> --secret quay-bridge-operator --service quay-bridge-operator
-```
-
-The result will place the newly created private key and certificate within a secret within the secret specified. The secret will be mounted into the appropriate located within the operator as declared in the Deployment of the operator. 
-
-Once the secret has been created, focus can shift to the MutatingWebhookConfiguration. The baseline can be found in the [deploy/mutatingwebhookconfiguration.yaml](deploy/mutatingwebhookconfiguration.yaml) file. The majority of the content should be in place to apply to the cluster. The one section that requires configuration is the caBundle property. This refers to the Certificate Authority (CA) for the OpenShift environment. The OpenShift CA is available as a _ConfigMap_ within the `kube-system` namespace.
-
-Execute the following command to retrieve the CA and format the result as a single line so that it can be entered into the MutatingWebhookConfiguration resource:
-
-```
-oc get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
-```
-
-Replace the `${CA_BUNDLE}` variable in the `deploy/mutatingwebhookconfiguration.yaml` file.
-
-Add the _MutatingWebhookConfiguration_ to the cluster by executing the following command:
-
-```
-oc create -f deploy/mutatingwebhookconfiguration.yaml
-```
-
-_Note: Until the operator is running, new requests for builds will fail since the webserver the MutatingWebhookConfiguration invokes is not available and a proper is response is required in order for the object to be persisted in etcd._
-
 #### Deploying the Operator
 
-With the CRD available on the cluster, the operator can be deployed. The operator must be deployed within a namespace. Create a new namespace if the desired namespace does not currently exist.
+The fastest method for deploying the operator is to deploy from OperatorHub. From the _Administrator_ perspective in the OpenShift Web Console, navigate to the _Operators_ tab, and then select _OperatorHub_.
 
-```
-oc new-project quayintegratiom
-```
+Search for _Quay Bridge Operator_ and then select _Install_.
 
-_Note: Any namespace can be specified_
-
-The integrated registry operator operates as any other pod running within OpenShift using a service account.  Specialized services are recommended against using the default service account and instead use a dedicated account for the specialized service.
-
-Execute the following command to create a service account called `quay-openshift-integration-operator`
-
-```
-oc create -f deploy/service_account.yaml
-```
-
-By default, OpenShift service accounts operates with minimal permissions on the OpenShift API. A set of policies that the operator needs in order to properly operate can be created using a _ClusterRole_. 
-
-Execute the following command to create the _ClusterRole_:
-
-```
-oc create -f deploy/clusterrole.yaml
-```
-
-To associate the ClusterRole with the previously created service account, a _ClusterRoleBinding_ can be created. A ClusterRoleBinding for can be found in the [deploy/clusterrole_binding.yaml](deploy/clusterrole_binding.yaml) file. Since a service account is created in a single user defined namespace, the name of the namespace must be provided in this file.
-
-Edit the _deploy/clusterrole_binding.yaml_ file and **update the value in the namespace property**:
-
-```
-oc create -f deploy/clusterrole_binding.yaml
-```
-
-Finally, deploy the operator by executing the following command:
-
-```
-oc create -f deploy/operator.yaml
-```
+Select an Approval Strategy and then select _Install_ which will deploy the operator to the cluster.
 
 #### Create A Secret for the Quay OAuth Token
 
 The Operator will use the previously obtained Access Token to communicate with Quay. Store this token within OpenShift as a secret.
 
-Execute the following command to create a secret called `quay-integration` with a key called `token` containing the access token:
+Execute the following command to create a secret called `quay-integration` in the `openshift-operators` namespace with a key called `token` containing the access token:
 
 ```
-$ oc create secret generic quay-integration --from-literal=token=<access_token>
+$ oc create secret -n openshift-operators generic quay-integration --from-literal=token=<access_token>
 ```
-
-This token will be referenced in the following section.
 
 
 #### Create the QuayIntegration Custom Resource
 
-Finally, to complete the integration between OpenShift and Quay, a `QuayIntegration` custom resource needs to be created.
 
-The following is an example of a basic definition of a `QuayIntegration` resource associated from the associated CRD.
+Finally, to complete the integration between OpenShift and Quay, a `QuayIntegration` custom resource needs to be created. This can be completed in the Web Console or from the command line.
+
+The following is an example of a basic definition of a `QuayIntegration` resource when created manually.
 
 ```
-apiVersion: redhatcop.redhat.io/v1alpha1
+apiVersion: quay.redhat.io/v1
 kind: QuayIntegration
 metadata:
-  name: example-quayintegration
+  name: quay
 spec:
   clusterID: openshift
-  credentialsSecretName: <NAMESPACE>/<SECRET>
+  credentialsSecret:
+    namespace: openshift-operators
+    name: quay-integration
   quayHostname: https://<QUAY_URL>
 ```
 
 The _clusterID_ is a value which should be unique across the entire ecosystem. This value is optional and defaults to `openshift`.
 
-The _credentialsSecretName_ is a NamespacedName value of the secret containing the token that was previously created.
+The _credentialsSecret_ property refers to tis a NamespacedName value of the secret containing the token that was previously created.
 
 Note: If Quay is using self signed certificates, the property `insecureRegistry: true`
 
-A baseline `QuayIntegration` Custom Resource can be found in _deploy/crds/redhatcop_v1alpha1_quayintegration_cr.yaml_. Update the values for your environment and execute the following command:
+A baseline `QuayIntegration` Custom Resource can be found in _config/samples/quay_v1_quayintegration.yaml_. Update the values for your environment and execute the following command:
 
 ```
-$ oc create -f deploy/crds/redhatcop_v1alpha1_quayintegration_cr.yaml
+$ oc create -f config/samples/quay_v1_quayintegration.yaml
 ```
 
-Organizations within Quay should be created for the related namespaces in OpenShift
+Organizations within Quay should be created for the related namespaces from the OpenShift environment
+
+## Development
+
+The operator can be deployed manually without the use of the Operator Lifecycle Manager (OLM)
+
+### Prerequisites
+
+Since webhooks are a key component of the featureset, certificates must be configured in order to facilitate the communication between the API server and the operator. Deploy [Cert Manager](https://cert-manager.io/) using the OLM. Deploy the operator and create `CertManager` resource.
+
+### Deployment
+
+The first step is to install the CRD's to the cluster
+
+```shell
+make install
+```
+
+Next, Deploy the operator to the cluster
+
+```shell
+make deploy IMG=quay.io/quay/quay-bridge-operator:latest
+```
 
 
 ## End to End Demonstration
@@ -283,6 +204,6 @@ Once the command completes, navigate to Quay and confirm the _openshift_e2e-demo
 
 ### TLS Considerations
 
-Best practices dictate that all communications between a client and an image registry be facilitated through secure means. Communications should all leverage HTTPS/TLS with a certificate trust between the parties. While Quay can be configured to serve in an insecure configuration, proper certificates should be utilized on the server and configured on the client. Follow the [OpenShift documentation](https://docs.openshift.com/container-platform/3.11/day_two_guide/docker_tasks.html#day-two-guide-managing-docker-certs) for adding and managing certificates at the container runtime level. 
+Best practices dictate that all communications between a client and an image registry be facilitated through secure means. Communications should all leverage HTTPS/TLS with a certificate trust between the parties. While Quay can be configured to serve in an insecure configuration, proper certificates should be utilized on the server and configured on the client. Follow the [OpenShift documentation](https://docs.openshift.com/container-platform/4.7/security/certificate_types_descriptions/proxy-certificates.html) for adding and managing certificates at the container runtime level. 
 
 

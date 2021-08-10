@@ -4,133 +4,107 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
+	"github.com/go-logr/logr"
 	buildv1 "github.com/openshift/api/build/v1"
-	redhatcopv1alpha1 "github.com/quay/quay-bridge-operator/pkg/apis/redhatcop/v1alpha1"
+	quayv1 "github.com/quay/quay-bridge-operator/api/v1"
 	"github.com/quay/quay-bridge-operator/pkg/constants"
 	"github.com/quay/quay-bridge-operator/pkg/logging"
-	"k8s.io/api/admission/v1beta1"
+	jsonpatch "gomodules.xyz/jsonpatch/v2"
+	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-type WebhookServer struct {
-	Server       *http.Server
-	Deserializer runtime.Decoder
-	Client       client.Client
+type QuayIntegrationMutator struct {
+	Client  client.Client
+	decoder *admission.Decoder
+	Log     logr.Logger
 }
 
-type patchOperation struct {
-	Op    string      `json:"op"`
-	Path  string      `json:"path"`
-	Value interface{} `json:"value,omitempty"`
-}
+// +kubebuilder:webhook:path=/admissionwebhook,mutating=true,failurePolicy=fail,verbs="*",groups="build.openshift.io",resources=builds,versions=v1,name=quayintegration.quay.redhat.com,sideEffects=None,admissionReviewVersions={v1}
 
-func (wsvr *WebhookServer) Handle(w http.ResponseWriter, r *http.Request) {
+func (q *QuayIntegrationMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
 
-	var body []byte
-	if r.Body != nil {
-		if data, err := ioutil.ReadAll(r.Body); err == nil {
-			body = data
-		}
-	}
-	if len(body) == 0 {
-		logging.Log.Error(fmt.Errorf("empty body"), "empty body")
-		http.Error(w, "empty body", http.StatusBadRequest)
-		return
+	var admissionResponse *admissionv1.AdmissionResponse
+	build := &buildv1.Build{}
+
+	err := q.decoder.Decode(req, build)
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	// verify the content type is accurate
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/json" {
-		logging.Log.Info("Invalid Content Type", "Content-Type", contentType)
-		http.Error(w, "invalid Content-Type, expect `application/json`", http.StatusUnsupportedMediaType)
-		return
-	}
+	// Get QuayIntegration
+	quayIntegration, found, err := q.getQuayIntegration(ctx, &req)
 
-	var admissionResponse *v1beta1.AdmissionResponse
-	ar := v1beta1.AdmissionReview{}
-	if _, _, err := wsvr.Deserializer.Decode(body, nil, &ar); err != nil {
-		logging.Log.Error(err, "Can't decode body")
-		admissionResponse = &v1beta1.AdmissionResponse{
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
+	if !found {
+
+		if err != nil {
+			admissionResponse = &admissionv1.AdmissionResponse{
+				Allowed: false,
+				Result: &metav1.Status{
+					Message: err.Error(),
+				},
+			}
+		} else {
+			admissionResponse = &admissionv1.AdmissionResponse{
+				Allowed: true,
+			}
 		}
 	} else {
 
-		// Get QuayIntegration
-		quayIntegration, found, err := wsvr.getQuayIntegration(&ar)
+		admissionResponse = getAdmissionResponseForBuild(build, &quayIntegration)
 
-		if !found {
-
-			if err != nil {
-				admissionResponse = &v1beta1.AdmissionResponse{
-					Allowed: false,
-					Result: &metav1.Status{
-						Message: err.Error(),
-					},
-				}
-			} else {
-				admissionResponse = &v1beta1.AdmissionResponse{
-					Allowed: true,
-				}
-			}
-		} else {
-
-			admissionResponse = getAdmissionResponseForBuild(&ar, &quayIntegration)
-
-		}
 	}
 
-	admissionReview := v1beta1.AdmissionReview{}
-	if admissionResponse != nil {
-		admissionReview.Response = admissionResponse
-		if ar.Request != nil {
-			admissionReview.Response.UID = ar.Request.UID
-		}
-	}
-
-	resp, err := json.Marshal(admissionReview)
-	if err != nil {
-		logging.Log.Error(err, "Can't encode response")
-		http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
-	}
-	if _, err := w.Write(resp); err != nil {
-		logging.Log.Error(err, "Can't write response")
-		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
-	}
+	return admission.Response{AdmissionResponse: *admissionResponse}
 
 }
 
-func getAdmissionResponseForBuild(ar *v1beta1.AdmissionReview, quayIntegration *redhatcopv1alpha1.QuayIntegration) *v1beta1.AdmissionResponse {
+func (q *QuayIntegrationMutator) getQuayIntegration(ctx context.Context, ar *admission.Request) (quayv1.QuayIntegration, bool, error) {
 
-	var patch []patchOperation
+	// Find the Current Registered QuayIntegration objects
+	quayIntegrations := quayv1.QuayIntegrationList{}
 
-	var build buildv1.Build
+	err := q.Client.List(ctx, &quayIntegrations, &client.ListOptions{})
 
-	if err := json.Unmarshal(ar.Request.Object.Raw, &build); err != nil {
-		logging.Log.Error(err, "Could not unmarshal raw object")
-		return &v1beta1.AdmissionResponse{
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
-		}
+	if err != nil {
+		return quayv1.QuayIntegration{}, false, err
 	}
+
+	if len(quayIntegrations.Items) != 1 {
+		logging.Log.Info("No QuayIntegrations defined or more than 1 integration present")
+		return quayv1.QuayIntegration{}, false, nil
+	}
+
+	quayIntegration := *&quayIntegrations.Items[0]
+
+	// Check is this is a valid namespace (TODO: Use a predicate to filter out?)
+	validNamespace := quayIntegration.IsAllowedNamespace(ar.Namespace)
+
+	if !validNamespace {
+		return quayv1.QuayIntegration{}, false, nil
+	}
+
+	return quayIntegration, true, nil
+}
+
+func getAdmissionResponseForBuild(build *buildv1.Build, quayIntegration *quayv1.QuayIntegration) *admissionv1.AdmissionResponse {
+
+	var patch []jsonpatch.JsonPatchOperation
 
 	quayRegistryHostname, err := quayIntegration.GetRegistryHostname()
 
 	if (build.Spec.Strategy.DockerStrategy == nil && build.Spec.Strategy.SourceStrategy == nil) || build.Spec.CommonSpec.Output.To.Kind != "ImageStreamTag" {
-		return &v1beta1.AdmissionResponse{
+		return &admissionv1.AdmissionResponse{
 			Allowed: true,
 		}
 	}
 
-	var imageStreamDestinationNamespace = ar.Request.Namespace
+	var imageStreamDestinationNamespace = build.Namespace
 
 	if build.Spec.CommonSpec.Output.To.Namespace != "" {
 		imageStreamDestinationNamespace = build.Spec.CommonSpec.Output.To.Namespace
@@ -142,83 +116,61 @@ func getAdmissionResponseForBuild(ar *v1beta1.AdmissionReview, quayIntegration *
 	dockerImage := fmt.Sprintf("%s/%s/%s:%s", quayRegistryHostname, quayIntegration.GenerateQuayOrganizationNameFromNamespace(imageStreamDestinationNamespace), imageStremParts[0], imageStremParts[1])
 
 	// Update the Kind
-	patch = append(patch, patchOperation{
-		Op:    "replace",
-		Path:  "/spec/output/to/kind",
-		Value: "DockerImage",
+	patch = append(patch, jsonpatch.JsonPatchOperation{
+		Operation: "replace",
+		Path:      "/spec/output/to/kind",
+		Value:     "DockerImage",
 	})
 
 	// Update the destination
-	patch = append(patch, patchOperation{
-		Op:    "replace",
-		Path:  "/spec/output/to/name",
-		Value: dockerImage,
+	patch = append(patch, jsonpatch.JsonPatchOperation{
+		Operation: "replace",
+		Path:      "/spec/output/to/name",
+		Value:     dockerImage,
 	})
 
 	// Add annotations to Build to for Build Controller to use
-	patch = append(patch, patchOperation{
-		Op:    "add",
-		Path:  "/metadata/annotations/" + escapeJSONPointer(constants.BuildOperatorManagedAnnotation),
-		Value: "true",
+	patch = append(patch, jsonpatch.JsonPatchOperation{
+		Operation: "add",
+		Path:      "/metadata/annotations/" + escapeJSONPointer(constants.BuildOperatorManagedAnnotation),
+		Value:     "true",
 	})
 
-	patch = append(patch, patchOperation{
-		Op:    "add",
-		Path:  "/metadata/annotations/" + escapeJSONPointer(constants.BuildDestinationImageStreamAnnotation),
-		Value: fmt.Sprintf("%s/%s:%s", imageStreamDestinationNamespace, imageStremParts[0], imageStremParts[1]),
+	patch = append(patch, jsonpatch.JsonPatchOperation{
+		Operation: "add",
+		Path:      "/metadata/annotations/" + escapeJSONPointer(constants.BuildDestinationImageStreamAnnotation),
+		Value:     fmt.Sprintf("%s/%s:%s", imageStreamDestinationNamespace, imageStremParts[0], imageStremParts[1]),
 	})
 
 	patchBytes, err := json.Marshal(patch)
 
 	if err != nil {
-		return &v1beta1.AdmissionResponse{
+		return &admissionv1.AdmissionResponse{
 			Result: &metav1.Status{
 				Message: err.Error(),
 			},
 		}
 	}
 
-	return &v1beta1.AdmissionResponse{
+	return &admissionv1.AdmissionResponse{
 		Allowed: true,
 		Patch:   patchBytes,
-		PatchType: func() *v1beta1.PatchType {
-			pt := v1beta1.PatchTypeJSONPatch
+		PatchType: func() *admissionv1.PatchType {
+			pt := admissionv1.PatchTypeJSONPatch
 			return &pt
 		}(),
 	}
 
 }
 
-func (wsvr *WebhookServer) getQuayIntegration(ar *v1beta1.AdmissionReview) (redhatcopv1alpha1.QuayIntegration, bool, error) {
-
-	// Find the Current Registered QuayIntegration objects
-	quayIntegrations := redhatcopv1alpha1.QuayIntegrationList{}
-
-	err := wsvr.Client.List(context.TODO(), &client.ListOptions{}, &quayIntegrations)
-
-	if err != nil {
-		return redhatcopv1alpha1.QuayIntegration{}, false, err
-	}
-
-	if len(quayIntegrations.Items) != 1 {
-		logging.Log.Info("No QuayIntegrations defined or more than 1 integration present")
-		return redhatcopv1alpha1.QuayIntegration{}, false, nil
-	}
-
-	quayIntegration := *&quayIntegrations.Items[0]
-
-	// Check is this is a valid namespace (TODO: Use a predicate to filter out?)
-	validNamespace := quayIntegration.IsAllowedNamespace(ar.Request.Namespace)
-
-	if !validNamespace {
-		return redhatcopv1alpha1.QuayIntegration{}, false, nil
-	}
-
-	return quayIntegration, true, nil
-}
-
 func escapeJSONPointer(s string) string {
 	esc := strings.Replace(s, "~", "~0", -1)
 	esc = strings.Replace(esc, "/", "~1", -1)
 	return esc
+}
+
+// InjectDecoder injects the decoder.
+func (a *QuayIntegrationMutator) InjectDecoder(d *admission.Decoder) error {
+	a.decoder = d
+	return nil
 }
