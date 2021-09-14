@@ -159,7 +159,7 @@ spec:
     Replace the `${CA_BUNDLE}` variable in the following `MutatingWebhookConfiguration` YAML and create it:
 
     ```yaml
-    apiVersion: admissionregistration.k8s.io/v1beta1
+    apiVersion: admissionregistration.k8s.io/v1
     kind: MutatingWebhookConfiguration 
     metadata:
       name: quay-bridge-operator
@@ -177,6 +177,10 @@ spec:
           apiVersions: ["v1" ]
           resources: [ "builds" ]
         failurePolicy: Fail
+        sideEffects: None
+        admissionReviewVersions: v1beta1
+        matchPolicy: Exact
+        timeoutSeconds: 30s
     ```
 
     _Note: Until the operator is running, new requests for builds will fail since the webserver the MutatingWebhookConfiguration invokes is not available and a proper is response is required in order for the object to be persisted in etcd._
