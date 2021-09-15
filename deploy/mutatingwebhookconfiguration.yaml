@@ -17,6 +17,6 @@ webhooks:
       resources: [ "builds" ]
     failurePolicy: Fail
     matchPolicy: Exact
-    timeoutSeconds: 30s
+    timeoutSeconds: 30
     sideEffects: None
-    admissionReviewVersions: v1beta1
+    admissionReviewVersions: [v1beta1]
