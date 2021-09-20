@@ -21,4 +21,4 @@ LABEL com.redhat.component="quay-bridge-operator-bundle-container" \
       version="v3.6.0"
 
 COPY manifests/*.yaml /manifests/
-COPY manifests/metadata/annotations.yaml /metadata/annotations.yaml
+COPY metadata/annotations.yaml /metadata/annotations.yaml
