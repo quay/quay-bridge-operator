@@ -75,7 +75,7 @@ Finally, to complete the integration between OpenShift and Quay, a `QuayIntegrat
 The following is an example of a basic definition of a `QuayIntegration` resource when created manually.
 
 ```
-apiVersion: quay.redhat.io/v1
+apiVersion: quay.redhat.com/v1
 kind: QuayIntegration
 metadata:
   name: quay
