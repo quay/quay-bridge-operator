@@ -123,6 +123,13 @@ Next, Deploy the operator to the cluster
 make deploy IMG=quay.io/quay/quay-bridge-operator:latest
 ```
 
+### End to End Testing
+
+Once you have an installed and configured Quay Bridge Operator on an OpenShift cluster, you can run end-to-end tests to verify that it works as expected
+
+```
+make test-e2e
+```
 
 ## End to End Demonstration
 
