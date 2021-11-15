@@ -141,3 +141,7 @@ bundle: manifests kustomize
 .PHONY: bundle-build ## Build the bundle image.
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+.PHONY: test-e2e
+test-e2e:
+	./hack/test-e2e.sh
