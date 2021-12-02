@@ -25,7 +25,7 @@ type QuayIntegrationMutator struct {
 	Log     logr.Logger
 }
 
-// +kubebuilder:webhook:path=/admissionwebhook,mutating=true,failurePolicy=fail,verbs="*",groups="build.openshift.io",resources=builds,versions=v1,name=quayintegration.quay.redhat.com,sideEffects=None,admissionReviewVersions={v1}
+// +kubebuilder:webhook:path=/admissionwebhook,mutating=true,failurePolicy=fail,verbs=create;update,groups="build.openshift.io",resources=builds,versions=v1,name=quayintegration.quay.redhat.com,sideEffects=None,admissionReviewVersions={v1}
 
 func (q *QuayIntegrationMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
 
