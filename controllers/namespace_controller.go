@@ -32,13 +32,13 @@ import (
 
 	quayv1 "github.com/quay/quay-bridge-operator/api/v1"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/quay/quay-bridge-operator/pkg/constants"
 	"github.com/quay/quay-bridge-operator/pkg/core"
 	"github.com/quay/quay-bridge-operator/pkg/credentials"
 	"github.com/quay/quay-bridge-operator/pkg/logging"
 	"github.com/quay/quay-bridge-operator/pkg/utils"
+	"golang.org/x/sync/errgroup"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -277,10 +277,18 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 	// Create Default Permissions
 	for quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue := range QuayServiceAccountPermissionMatrix {
 
-		robotAccountResult, robotAccountErr := r.createRobotAccountAssociateToSA(ctx, request, namespace, quayClient, quayOrganizationName, quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue, quayName, quayHostname)
+		var g errgroup.Group
+		func(quayServiceAccountPermissionMatrixKey qotypes.OpenShiftServiceAccount, quayServiceAccountPermissionMatrixValue qclient.QuayRole) {
+			g.Go(func() error {
+				if _, robotAccountErr := r.createRobotAccountAssociateToSA(ctx, request, namespace, quayClient, quayOrganizationName, quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue, quayName, quayHostname); robotAccountErr != nil {
+					return robotAccountErr
+				}
+				return nil
+			})
+		}(quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue)
 
-		if robotAccountErr != nil {
-			return robotAccountResult, robotAccountErr
+		if err := g.Wait(); err != nil {
+			return reconcile.Result{}, err
 		}
 
 	}
