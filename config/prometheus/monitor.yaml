@@ -1,10 +1,9 @@
-
 # Prometheus Monitor Service (Metrics)
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   labels:
-    control-plane: controller-manager
+    name: quay-bridge-operator
   name: controller-manager-metrics-monitor
   namespace: system
 spec:
@@ -13,4 +12,4 @@ spec:
       port: https
   selector:
     matchLabels:
-      control-plane: controller-manager
+      name: quay-bridge-operator
