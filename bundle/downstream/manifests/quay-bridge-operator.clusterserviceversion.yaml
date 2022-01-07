@@ -574,12 +574,12 @@ spec:
             replicas: 1
             selector:
               matchLabels:
-                control-plane: controller-manager
+                name: quay-bridge-operator
             strategy: {}
             template:
               metadata:
                 labels:
-                  control-plane: controller-manager
+                  name: quay-bridge-operator
               spec:
                 containers:
                   - args:
