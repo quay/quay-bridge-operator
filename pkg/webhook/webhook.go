@@ -129,6 +129,14 @@ func getAdmissionResponseForBuild(build *buildv1.Build, quayIntegration *quayv1.
 		Value:     dockerImage,
 	})
 
+	// Remove the namespace attribute
+	if build.Spec.CommonSpec.Output.To.Namespace != "" {
+		patch = append(patch, jsonpatch.JsonPatchOperation{
+			Operation: "remove",
+			Path:      "/spec/output/to/namespace",
+		})
+	}
+
 	// Add annotations to Build to for Build Controller to use
 	patch = append(patch, jsonpatch.JsonPatchOperation{
 		Operation: "add",
