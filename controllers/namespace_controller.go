@@ -109,7 +109,7 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:  instance,
 			Message: "No QuayIntegrations defined or more than 1 integration present",
-			Reason:  "ConfigrurationError",
+			Reason:  "ConfigurationError",
 		})
 	}
 
@@ -129,7 +129,7 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:  instance,
 			Message: "Required parameter 'CredentialsSecret' not found",
-			Reason:  "ConfigrurationError",
+			Reason:  "ConfigurationError",
 		})
 
 	}
@@ -142,7 +142,7 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       instance,
 			Message:      "Error Locating Quay Integration Secret",
-			Reason:       "ConfigrurationError",
+			Reason:       "ConfigurationError",
 			KeyAndValues: []interface{}{"Namespace", quayIntegration.Spec.CredentialsSecret.Namespace, "Secret", quayIntegration.Spec.CredentialsSecret.Name},
 		})
 	}
@@ -157,7 +157,7 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       instance,
 			Message:      fmt.Sprintf("Credential Secret does not contain key '%s'", quaySecretCredentialTokenKey),
-			Reason:       "ConfigrurationError",
+			Reason:       "ConfigurationError",
 			KeyAndValues: []interface{}{"Namespace", quayIntegration.Spec.CredentialsSecret.Namespace, "Secret", quayIntegration.Spec.CredentialsSecret.Name},
 		})
 	}
@@ -278,19 +278,15 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 	for quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue := range QuayServiceAccountPermissionMatrix {
 
 		var g errgroup.Group
-		func(quayServiceAccountPermissionMatrixKey qotypes.OpenShiftServiceAccount, quayServiceAccountPermissionMatrixValue qclient.QuayRole) {
-			g.Go(func() error {
-				if _, robotAccountErr := r.createRobotAccountAssociateToSA(ctx, request, namespace, quayClient, quayOrganizationName, quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue, quayName, quayHostname); robotAccountErr != nil {
-					return robotAccountErr
-				}
-				return nil
-			})
-		}(quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue)
-
+		g.Go(func() error {
+			if _, robotAccountErr := r.createRobotAccountAssociateToSA(ctx, request, namespace, quayClient, quayOrganizationName, quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue, quayName, quayHostname); robotAccountErr != nil {
+				return robotAccountErr
+			}
+			return nil
+		})
 		if err := g.Wait(); err != nil {
 			return reconcile.Result{}, err
 		}
-
 	}
 
 	// Synchronize Namespaces

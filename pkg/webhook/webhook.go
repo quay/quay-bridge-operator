@@ -12,9 +12,13 @@ import (
 	quayv1 "github.com/quay/quay-bridge-operator/api/v1"
 	"github.com/quay/quay-bridge-operator/pkg/constants"
 	"github.com/quay/quay-bridge-operator/pkg/logging"
+	qotypes "github.com/quay/quay-bridge-operator/pkg/types"
+	"github.com/quay/quay-bridge-operator/pkg/utils"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	admissionv1 "k8s.io/api/admission/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -55,13 +59,47 @@ func (q *QuayIntegrationMutator) Handle(ctx context.Context, req admission.Reque
 			}
 		}
 	} else {
+		// Check if builder service account has secret
+		hasSecret, serviceAcctErr := q.checkSecretForBuilderServiceAccount(ctx, &req, &quayIntegration)
 
-		admissionResponse = getAdmissionResponseForBuild(build, &quayIntegration)
+		if !hasSecret {
+			if serviceAcctErr != nil {
+				admissionResponse = &admissionv1.AdmissionResponse{
+					Allowed: false,
+					Result: &metav1.Status{
+						Message: serviceAcctErr.Error(),
+					},
+				}
+			} else {
+				admissionResponse = &admissionv1.AdmissionResponse{
+					Allowed: false,
+				}
+			}
+		} else {
+			admissionResponse = getAdmissionResponseForBuild(build, &quayIntegration)
+		}
 
 	}
 
 	return admission.Response{AdmissionResponse: *admissionResponse}
 
+}
+
+func (q *QuayIntegrationMutator) checkSecretForBuilderServiceAccount(ctx context.Context, ar *admission.Request, quayIntegration *quayv1.QuayIntegration) (bool, error) {
+
+	builderServiceAccnt := &corev1.ServiceAccount{}
+
+	err := q.Client.Get(ctx, types.NamespacedName{Namespace: ar.Namespace, Name: string(qotypes.BuilderOpenShiftServiceAccount)}, builderServiceAccnt)
+	if err != nil {
+		logging.Log.Info("Failed to get existing builder service account")
+		return false, err
+	}
+
+	hasSecret := utils.ObjectReferenceNameExists(builderServiceAccnt.Secrets, utils.GenerateDockerJsonSecretNameForServiceAccount(builderServiceAccnt.ObjectMeta.Name, quayIntegration.Spec.ClusterID))
+	if !hasSecret {
+		logging.Log.Info("Builder service account does not have required secret")
+	}
+	return hasSecret, nil
 }
 
 func (q *QuayIntegrationMutator) getQuayIntegration(ctx context.Context, ar *admission.Request) (quayv1.QuayIntegration, bool, error) {
