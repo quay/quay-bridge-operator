@@ -32,13 +32,13 @@ import (
 
 	quayv1 "github.com/quay/quay-bridge-operator/api/v1"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/quay/quay-bridge-operator/pkg/constants"
 	"github.com/quay/quay-bridge-operator/pkg/core"
 	"github.com/quay/quay-bridge-operator/pkg/credentials"
 	"github.com/quay/quay-bridge-operator/pkg/logging"
 	"github.com/quay/quay-bridge-operator/pkg/utils"
+	"golang.org/x/sync/errgroup"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -109,7 +109,7 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:  instance,
 			Message: "No QuayIntegrations defined or more than 1 integration present",
-			Reason:  "ConfigrurationError",
+			Reason:  "ConfigurationError",
 		})
 	}
 
@@ -129,7 +129,7 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:  instance,
 			Message: "Required parameter 'CredentialsSecret' not found",
-			Reason:  "ConfigrurationError",
+			Reason:  "ConfigurationError",
 		})
 
 	}
@@ -142,7 +142,7 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       instance,
 			Message:      "Error Locating Quay Integration Secret",
-			Reason:       "ConfigrurationError",
+			Reason:       "ConfigurationError",
 			KeyAndValues: []interface{}{"Namespace", quayIntegration.Spec.CredentialsSecret.Namespace, "Secret", quayIntegration.Spec.CredentialsSecret.Name},
 		})
 	}
@@ -157,7 +157,7 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       instance,
 			Message:      fmt.Sprintf("Credential Secret does not contain key '%s'", quaySecretCredentialTokenKey),
-			Reason:       "ConfigrurationError",
+			Reason:       "ConfigurationError",
 			KeyAndValues: []interface{}{"Namespace", quayIntegration.Spec.CredentialsSecret.Namespace, "Secret", quayIntegration.Spec.CredentialsSecret.Name},
 		})
 	}
@@ -274,15 +274,22 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 		})
 	}
 
+	var g errgroup.Group
+
 	// Create Default Permissions
 	for quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue := range QuayServiceAccountPermissionMatrix {
+		func(quayServiceAccountPermissionMatrixKey qotypes.OpenShiftServiceAccount, quayServiceAccountPermissionMatrixValue qclient.QuayRole) {
+			g.Go(func() error {
+				if _, robotAccountErr := r.createRobotAccountAssociateToSA(ctx, request, namespace, quayClient, quayOrganizationName, quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue, quayName, quayHostname); robotAccountErr != nil {
+					return robotAccountErr
+				}
+				return nil
+			})
+		}(quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue)
+	}
 
-		robotAccountResult, robotAccountErr := r.createRobotAccountAssociateToSA(ctx, request, namespace, quayClient, quayOrganizationName, quayServiceAccountPermissionMatrixKey, quayServiceAccountPermissionMatrixValue, quayName, quayHostname)
-
-		if robotAccountErr != nil {
-			return robotAccountResult, robotAccountErr
-		}
-
+	if err := g.Wait(); err != nil {
+		return reconcile.Result{}, err
 	}
 
 	// Synchronize Namespaces
