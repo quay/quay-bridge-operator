@@ -8,6 +8,7 @@ require (
 	github.com/onsi/gomega v1.10.2
 	github.com/openshift/api v0.0.0-20210202165416-a9e731090f5e
 	github.com/redhat-cop/operator-utils v1.1.2
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gomodules.xyz/jsonpatch/v2 v2.1.0
 	k8s.io/api v0.20.0
 	k8s.io/apimachinery v0.20.0
