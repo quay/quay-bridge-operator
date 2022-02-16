@@ -567,9 +567,9 @@ spec:
                 - subjectaccessreviews
               verbs:
                 - create
-          serviceAccountName: quay-bridge-operator-controller-manager
+          serviceAccountName: quay-bridge-operator
       deployments:
-        - name: quay-bridge-operator-controller-manager
+        - name: quay-bridge-operator
           spec:
             replicas: 1
             selector:
@@ -632,7 +632,7 @@ spec:
                         readOnly: true
                 securityContext:
                   runAsNonRoot: true
-                serviceAccountName: quay-bridge-operator-controller-manager
+                serviceAccountName: quay-bridge-operator
                 terminationGracePeriodSeconds: 10
                 volumes:
                   - name: apiservice-cert
@@ -667,7 +667,7 @@ spec:
               verbs:
                 - create
                 - patch
-          serviceAccountName: quay-bridge-operator-controller-manager
+          serviceAccountName: quay-bridge-operator
     strategy: deployment
   installModes:
     - supported: false
@@ -696,7 +696,7 @@ spec:
     - admissionReviewVersions:
         - v1
       containerPort: 443
-      deploymentName: quay-bridge-operator-controller-manager
+      deploymentName: quay-bridge-operator
       failurePolicy: Fail
       generateName: quayintegration.quay.redhat.com
       rules:
