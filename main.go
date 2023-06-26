@@ -84,7 +84,7 @@ func main() {
 		Port:                       9443,
 		HealthProbeBindAddress:     probeAddr,
 		LeaderElection:             enableLeaderElection,
-		LeaderElectionResourceLock: "configmaps",
+		LeaderElectionResourceLock: "configmapsleases",
 		LeaderElectionID:           "0111fb36.redhat.com",
 	})
 	if err != nil {
