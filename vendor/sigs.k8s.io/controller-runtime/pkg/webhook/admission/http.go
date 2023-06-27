@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	v1 "k8s.io/api/admission/v1"
@@ -45,16 +44,13 @@ var _ http.Handler = &Webhook{}
 func (wh *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var body []byte
 	var err error
+	ctx := r.Context()
+	if wh.WithContextFunc != nil {
+		ctx = wh.WithContextFunc(ctx, r)
+	}
 
 	var reviewResponse Response
-	if r.Body != nil {
-		if body, err = ioutil.ReadAll(r.Body); err != nil {
-			wh.log.Error(err, "unable to read the body from the incoming request")
-			reviewResponse = Errored(http.StatusBadRequest, err)
-			wh.writeResponse(w, reviewResponse)
-			return
-		}
-	} else {
+	if r.Body == nil {
 		err = errors.New("request body is empty")
 		wh.log.Error(err, "bad request")
 		reviewResponse = Errored(http.StatusBadRequest, err)
@@ -62,9 +58,16 @@ func (wh *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer r.Body.Close()
+	if body, err = io.ReadAll(r.Body); err != nil {
+		wh.log.Error(err, "unable to read the body from the incoming request")
+		reviewResponse = Errored(http.StatusBadRequest, err)
+		wh.writeResponse(w, reviewResponse)
+		return
+	}
+
 	// verify the content type is accurate
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/json" {
+	if contentType := r.Header.Get("Content-Type"); contentType != "application/json" {
 		err = fmt.Errorf("contentType=%s, expected application/json", contentType)
 		wh.log.Error(err, "unable to process a request with an unknown content type", "content type", contentType)
 		reviewResponse = Errored(http.StatusBadRequest, err)
@@ -92,8 +95,7 @@ func (wh *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	wh.log.V(1).Info("received request", "UID", req.UID, "kind", req.Kind, "resource", req.Resource)
 
-	// TODO: add panic-recovery for Handle
-	reviewResponse = wh.Handle(r.Context(), req)
+	reviewResponse = wh.Handle(ctx, req)
 	wh.writeResponseTyped(w, reviewResponse, actualAdmRevGVK)
 }
 
@@ -121,10 +123,17 @@ func (wh *Webhook) writeResponseTyped(w io.Writer, response Response, admRevGVK 
 
 // writeAdmissionResponse writes ar to w.
 func (wh *Webhook) writeAdmissionResponse(w io.Writer, ar v1.AdmissionReview) {
-	err := json.NewEncoder(w).Encode(ar)
-	if err != nil {
-		wh.log.Error(err, "unable to encode the response")
-		wh.writeResponse(w, Errored(http.StatusInternalServerError, err))
+	if err := json.NewEncoder(w).Encode(ar); err != nil {
+		wh.log.Error(err, "unable to encode and write the response")
+		// Since the `ar v1.AdmissionReview` is a clear and legal object,
+		// it should not have problem to be marshalled into bytes.
+		// The error here is probably caused by the abnormal HTTP connection,
+		// e.g., broken pipe, so we can only write the error response once,
+		// to avoid endless circular calling.
+		serverError := Errored(http.StatusInternalServerError, err)
+		if err = json.NewEncoder(w).Encode(v1.AdmissionReview{Response: &serverError.AdmissionResponse}); err != nil {
+			wh.log.Error(err, "still unable to encode and write the InternalServerError response")
+		}
 	} else {
 		res := ar.Response
 		if log := wh.log; log.V(1).Enabled() {
