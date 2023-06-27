@@ -21,34 +21,34 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
-	"strings"
 	"text/template"
 	"time"
 
-	apis "github.com/redhat-cop/operator-utils/pkg/util/apis"
+	"github.com/redhat-cop/operator-utils/pkg/util/apis"
+	"github.com/redhat-cop/operator-utils/pkg/util/templates"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // ReconcilerBase is a base struct from which all reconcilers can be derived from. By doing so your reconcilers will also inherit a set of utility functions
 // To inherit from reconciler just build your finalizer this way:
-// type MyReconciler struct {
-//   util.ReconcilerBase
-//   ... other optional fields ...
-// }
+//
+//	type MyReconciler struct {
+//	  util.ReconcilerBase
+//	  ... other optional fields ...
+//	}
 type ReconcilerBase struct {
 	apireader  client.Reader
 	client     client.Client
@@ -72,12 +72,12 @@ func NewFromManager(mgr manager.Manager, recorder record.EventRecorder) Reconcil
 	return NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), recorder, mgr.GetAPIReader())
 }
 
-//IsValid determines if a CR instance is valid. this implementation returns always true, should be overridden
+// IsValid determines if a CR instance is valid. this implementation returns always true, should be overridden
 func (r *ReconcilerBase) IsValid(obj metav1.Object) (bool, error) {
 	return true, nil
 }
 
-//IsInitialized determines if a CR instance is initialized. this implementation returns always true, should be overridden
+// IsInitialized determines if a CR instance is initialized. this implementation returns always true, should be overridden
 func (r *ReconcilerBase) IsInitialized(obj metav1.Object) bool {
 	return true
 }
@@ -92,7 +92,7 @@ func (r *ReconcilerBase) GetClient() client.Client {
 	return r.client
 }
 
-//GetRestConfig returns the undelying rest config
+// GetRestConfig returns the undelying rest config
 func (r *ReconcilerBase) GetRestConfig() *rest.Config {
 	return r.restConfig
 }
@@ -112,73 +112,11 @@ func (r *ReconcilerBase) GetDiscoveryClient() (*discovery.DiscoveryClient, error
 	return discovery.NewDiscoveryClientForConfig(r.GetRestConfig())
 }
 
-// GetDynamicClientOnAPIResource returns a dynamic client on an APIResource. This client can be further namespaced.
-func (r *ReconcilerBase) GetDynamicClientOnAPIResource(resource metav1.APIResource) (dynamic.NamespaceableResourceInterface, error) {
-	return r.getDynamicClientOnGVR(schema.GroupVersionResource{
-		Group:    resource.Group,
-		Version:  resource.Version,
-		Resource: resource.Name,
-	})
-}
-
-func (r *ReconcilerBase) getDynamicClientOnGVR(gvr schema.GroupVersionResource) (dynamic.NamespaceableResourceInterface, error) {
-	intf, err := dynamic.NewForConfig(r.GetRestConfig())
-	if err != nil {
-		log.Error(err, "Unable to get dynamic client")
-		return nil, err
-	}
-	res := intf.Resource(gvr)
-	return res, nil
-}
-
-// GetDynamicClientOnUnstructured returns a dynamic client on an Unstructured type. This client can be further namespaced.
-// TODO consider refactoring using apimachinery.RESTClientForGVK in controller-runtime
-func (r *ReconcilerBase) GetDynamicClientOnUnstructured(obj unstructured.Unstructured) (dynamic.ResourceInterface, error) {
-	apiRes, err := r.getAPIReourceForUnstructured(obj)
-	if err != nil {
-		log.Error(err, "Unable to get apiresource from unstructured", "unstructured", obj)
-		return nil, err
-	}
-	dc, err := r.GetDynamicClientOnAPIResource(apiRes)
-	if err != nil {
-		log.Error(err, "Unable to get namespaceable dynamic client from ", "resource", apiRes)
-		return nil, err
-	}
-	if apiRes.Namespaced {
-		return dc.Namespace(obj.GetNamespace()), nil
-	}
-	return dc, nil
-}
-
-func (r *ReconcilerBase) getAPIReourceForUnstructured(obj unstructured.Unstructured) (metav1.APIResource, error) {
-	gvk := obj.GetObjectKind().GroupVersionKind()
-	res := metav1.APIResource{}
-	discoveryClient, err := r.GetDiscoveryClient()
-	if err != nil {
-		log.Error(err, "Unable to create discovery client")
-		return res, err
-	}
-	resList, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
-	if err != nil {
-		log.Error(err, "Unable to retrieve resouce list for:", "groupversion", gvk.GroupVersion().String())
-		return res, err
-	}
-	for _, resource := range resList.APIResources {
-		if resource.Kind == gvk.Kind && !strings.Contains(resource.Name, "/") {
-			res = resource
-			res.Group = gvk.Group
-			res.Version = gvk.Version
-			break
-		}
-	}
-	return res, nil
-}
-
 // CreateOrUpdateResource creates a resource if it doesn't exist, and updates (overwrites it), if it exist
 // if owner is not nil, the owner field os set
 // if namespace is not "", the namespace field of the object is overwritten with the passed value
 func (r *ReconcilerBase) CreateOrUpdateResource(context context.Context, owner client.Object, namespace string, obj client.Object) error {
-
+	log := log.FromContext(context)
 	if owner != nil {
 		_ = controllerutil.SetControllerReference(owner, obj, r.GetScheme())
 	}
@@ -240,6 +178,7 @@ func (r *ReconcilerBase) CreateOrUpdateUnstructuredResources(context context.Con
 
 // DeleteResourceIfExists deletes an existing resource. It doesn't fail if the resource does not exist
 func (r *ReconcilerBase) DeleteResourceIfExists(context context.Context, obj client.Object) error {
+	log := log.FromContext(context)
 	err := r.GetClient().Delete(context, obj)
 	if err != nil && !apierrors.IsNotFound(err) {
 		log.Error(err, "unable to delete object ", "object", obj)
@@ -274,6 +213,7 @@ func (r *ReconcilerBase) DeleteUnstructuredResources(context context.Context, ob
 // if owner is not nil, the owner field os set
 // if namespace is not "", the namespace field of the object is overwritten with the passed value
 func (r *ReconcilerBase) CreateResourceIfNotExists(context context.Context, owner client.Object, namespace string, obj client.Object) error {
+	log := log.FromContext(context)
 	if owner != nil {
 		_ = controllerutil.SetControllerReference(owner, obj, r.GetScheme())
 	}
@@ -313,7 +253,8 @@ func (r *ReconcilerBase) CreateUnstructuredResourcesIfNotExist(context context.C
 
 // CreateOrUpdateTemplatedResources processes an initialized template expecting an array of objects as a result and the processes them with the CreateOrUpdate function
 func (r *ReconcilerBase) CreateOrUpdateTemplatedResources(context context.Context, owner client.Object, namespace string, data interface{}, template *template.Template) error {
-	objs, err := ProcessTemplateArray(data, template)
+	log := log.FromContext(context)
+	objs, err := templates.ProcessTemplateArray(context, data, template)
 	if err != nil {
 		log.Error(err, "error creating manifest from template")
 		return err
@@ -329,7 +270,8 @@ func (r *ReconcilerBase) CreateOrUpdateTemplatedResources(context context.Contex
 
 // CreateIfNotExistTemplatedResources processes an initialized template expecting an array of objects as a result and then processes them with the CreateResourceIfNotExists function
 func (r *ReconcilerBase) CreateIfNotExistTemplatedResources(context context.Context, owner client.Object, namespace string, data interface{}, template *template.Template) error {
-	objs, err := ProcessTemplateArray(data, template)
+	log := log.FromContext(context)
+	objs, err := templates.ProcessTemplateArray(context, data, template)
 	if err != nil {
 		log.Error(err, "error creating manifest from template")
 		return err
@@ -345,7 +287,8 @@ func (r *ReconcilerBase) CreateIfNotExistTemplatedResources(context context.Cont
 
 // DeleteTemplatedResources processes an initialized template expecting an array of objects as a result and then processes them with the Delete function
 func (r *ReconcilerBase) DeleteTemplatedResources(context context.Context, data interface{}, template *template.Template) error {
-	objs, err := ProcessTemplateArray(data, template)
+	log := log.FromContext(context)
+	objs, err := templates.ProcessTemplateArray(context, data, template)
 	if err != nil {
 		log.Error(err, "error creating manifest from template")
 		return err
@@ -367,11 +310,12 @@ func (r *ReconcilerBase) ManageOutcomeWithRequeue(context context.Context, obj c
 	return r.ManageSuccessWithRequeue(context, obj, requeueAfter)
 }
 
-//ManageErrorWithRequeue will take care of the following:
+// ManageErrorWithRequeue will take care of the following:
 // 1. generate a warning event attached to the passed CR
 // 2. set the status of the passed CR to a error condition if the object implements the apis.ConditionsStatusAware interface
 // 3. return a reconcile status with with the passed requeueAfter and error
 func (r *ReconcilerBase) ManageErrorWithRequeue(context context.Context, obj client.Object, issue error, requeueAfter time.Duration) (reconcile.Result, error) {
+	log := log.FromContext(context)
 	r.GetRecorder().Event(obj, "Warning", "ProcessingError", issue.Error())
 	if conditionsAware, updateStatus := (obj).(apis.ConditionsAware); updateStatus {
 		condition := metav1.Condition{
@@ -394,7 +338,7 @@ func (r *ReconcilerBase) ManageErrorWithRequeue(context context.Context, obj cli
 	return reconcile.Result{RequeueAfter: requeueAfter}, issue
 }
 
-//ManageError will take care of the following:
+// ManageError will take care of the following:
 // 1. generate a warning event attached to the passed CR
 // 2. set the status of the passed CR to a error condition if the object implements the apis.ConditionsStatusAware interface
 // 3. return a reconcile status with the passed error
@@ -404,6 +348,7 @@ func (r *ReconcilerBase) ManageError(context context.Context, obj client.Object,
 
 // ManageSuccessWithRequeue will update the status of the CR and return a successful reconcile result with requeueAfter set
 func (r *ReconcilerBase) ManageSuccessWithRequeue(context context.Context, obj client.Object, requeueAfter time.Duration) (reconcile.Result, error) {
+	log := log.FromContext(context)
 	if conditionsAware, updateStatus := (obj).(apis.ConditionsAware); updateStatus {
 		condition := metav1.Condition{
 			Type:               apis.ReconcileSuccess,
@@ -429,28 +374,6 @@ func (r *ReconcilerBase) ManageSuccess(context context.Context, obj client.Objec
 	return r.ManageSuccessWithRequeue(context, obj, 0)
 }
 
-//IsAPIResourceAvailable checks of a give GroupVersionKind is available in the running apiserver
-func (r *ReconcilerBase) IsAPIResourceAvailable(GVK schema.GroupVersionKind) (bool, error) {
-	discoveryClient, _ := r.GetDiscoveryClient()
-
-	// Query for known OpenShift API resource to verify it is available
-	apiResources, err := discoveryClient.ServerResourcesForGroupVersion(GVK.GroupVersion().String())
-
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return false, nil
-		}
-		log.Error(err, "Unable to retrive resources for", "GVK", GVK)
-		return false, err
-	}
-	for _, resource := range apiResources.APIResources {
-		if resource.Kind == GVK.Kind {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 // GetDirectClient returns a non cached client
 func (r *ReconcilerBase) GetDirectClient() (client.Client, error) {
 	return r.GetDirectClientWithSchemeBuilders()
@@ -462,18 +385,12 @@ func (r *ReconcilerBase) GetDirectClientWithSchemeBuilders(addToSchemes ...func(
 	for _, addToscheme := range append(addToSchemes, clientgoscheme.AddToScheme) {
 		err := addToscheme(scheme)
 		if err != nil {
-			log.Error(err, "unable to add scheme with", "adder", addToscheme)
 			return nil, err
 		}
 	}
-	client, err := client.New(r.GetRestConfig(), client.Options{
+	return client.New(r.GetRestConfig(), client.Options{
 		Scheme: scheme,
 	})
-	if err != nil {
-		log.Error(err, "unable to create client", "with restconfig", r.GetRestConfig())
-		return nil, err
-	}
-	return client, nil
 }
 
 // GetAPIReader returns a non cached reader
