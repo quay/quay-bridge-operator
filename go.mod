@@ -11,7 +11,7 @@ require (
 	golang.org/x/sync v0.3.0
 	gomodules.xyz/jsonpatch/v2 v2.3.0
 	k8s.io/api v0.26.6
-	k8s.io/apimachinery v0.26.6
+	k8s.io/apimachinery v0.27.3
 	k8s.io/client-go v0.26.6
 	sigs.k8s.io/controller-runtime v0.14.6
 )
