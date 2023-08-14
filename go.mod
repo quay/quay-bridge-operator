@@ -9,7 +9,7 @@ require (
 	github.com/openshift/api v0.0.0-20210202165416-a9e731090f5e
 	github.com/redhat-cop/operator-utils v1.3.5
 	golang.org/x/sync v0.3.0
-	gomodules.xyz/jsonpatch/v2 v2.3.0
+	gomodules.xyz/jsonpatch/v2 v2.4.0
 	k8s.io/api v0.26.6
 	k8s.io/apimachinery v0.26.6
 	k8s.io/client-go v0.26.6
