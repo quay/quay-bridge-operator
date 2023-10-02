@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/go-logr/logr v1.2.4
 	github.com/onsi/ginkgo/v2 v2.12.1
-	github.com/onsi/gomega v1.27.10
+	github.com/onsi/gomega v1.28.0
 	github.com/openshift/api v0.0.0-20210202165416-a9e731090f5e
 	github.com/redhat-cop/operator-utils v1.3.5
 	golang.org/x/sync v0.3.0
