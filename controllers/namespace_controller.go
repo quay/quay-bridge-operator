@@ -313,6 +313,15 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 		// Check if Repository Exists
 		_, repositoryHttpResponse, repositoryErr := quayClient.GetRepository(quayOrganizationName, imageStreamName)
 
+		if repositoryHttpResponse == nil {
+			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error creating request to retrieve repository",
+				KeyAndValues: []interface{}{"Namespace", namespace.Name, "Name", imageStreamName},
+				Error:        repositoryErr.Error,
+			})
+		}
+
 		if repositoryErr.Error != nil {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
