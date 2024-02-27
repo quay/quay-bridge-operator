@@ -75,7 +75,6 @@ type NamespaceIntegrationReconciler struct {
 //+kubebuilder:rbac:groups="image.openshift.io",resources=imagestreams;imagestreamimports,verbs=get;list;watch;create;update;patch
 
 func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
 	r.Log.Info("Reconciling Namespace", "Name", req.Name)
 
 	// Fetch the Namespace instance
@@ -96,7 +95,6 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 	quayIntegrations := quayv1.QuayIntegrationList{}
 
 	err = r.CoreComponents.ReconcilerBase.GetClient().List(ctx, &quayIntegrations, &client.ListOptions{})
-
 	if err != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:  instance,
@@ -117,27 +115,22 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 
 	// Check is this is a valid namespace (TODO: Use a predicate to filter out?)
 	validNamespace := quayIntegration.IsAllowedNamespace(instance.Name)
-
 	if !validNamespace {
-
 		// Not a synchronized namespace
 		return reconcile.Result{}, nil
 	}
 
 	if quayIntegration.Spec.CredentialsSecret == nil {
-
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:  instance,
 			Message: "Required parameter 'CredentialsSecret' not found",
 			Reason:  "ConfigurationError",
 		})
-
 	}
 
 	secretCredential := &corev1.Secret{}
 
 	err = r.CoreComponents.ReconcilerBase.GetClient().Get(ctx, types.NamespacedName{Namespace: quayIntegration.Spec.CredentialsSecret.Namespace, Name: quayIntegration.Spec.CredentialsSecret.Name}, secretCredential)
-
 	if err != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       instance,
@@ -181,7 +174,6 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 
 		// Remove Resources
 		result, err := r.cleanupResources(req, instance, quayClient, quayOrganizationName)
-
 		if err != nil {
 			return result, err
 		}
@@ -197,19 +189,15 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 			})
 		}
 		return reconcile.Result{}, nil
-
 	}
 
 	// Finalizer Management
 	if !util.HasFinalizer(instance, constants.NamespaceFinalizer) {
-
 		// Check if OpenShift Project
 		if utils.IsOpenShiftAnnotatedNamespace(instance) {
-
 			if _, sccMcsFound := instance.Annotations[constants.OpenShiftSccMcsAnnotation]; !sccMcsFound {
 				return reconcile.Result{}, nil
 			}
-
 		}
 
 		util.AddFinalizer(instance, constants.NamespaceFinalizer)
@@ -227,13 +215,11 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 
 	// Setup Resources
 	result, err := r.setupResources(ctx, req, instance, quayClient, quayOrganizationName, quayIntegration.Spec.ClusterID, quayIntegration.Spec.QuayHostname)
-
 	if err != nil {
 		return result, err
 	}
 
 	return reconcile.Result{}, nil
-
 }
 
 func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string, quayName string, quayHostname string) (reconcile.Result, error) {
@@ -250,12 +236,10 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 
 	// Check to see if Organization Exists (Response Code)
 	if organizationResponse.StatusCode == 404 {
-
 		// Create Organization
 		logging.Log.Info("Organization Does Not Exist", "Name", quayOrganizationName)
 
 		_, createOrganizationResponse, createOrganizationError := quayClient.CreateOrganization(quayOrganizationName)
-
 		if createOrganizationError.Error != nil || createOrganizationResponse.StatusCode != 201 {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
@@ -264,9 +248,7 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 				Error:        organizationError.Error,
 			})
 		}
-
 	} else if organizationResponse.StatusCode != 200 {
-
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
 			Message:      "Error occurred retrieving Quay Organization",
@@ -296,7 +278,6 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 	imageStreams := imagev1.ImageStreamList{}
 
 	err := r.CoreComponents.ReconcilerBase.GetClient().List(ctx, &imageStreams, &client.ListOptions{Namespace: namespace.Name})
-
 	if err != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
@@ -304,14 +285,20 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 			KeyAndValues: []interface{}{"Namespace", namespace.Name},
 			Error:        err,
 		})
-
 	}
 
 	for _, imageStream := range imageStreams.Items {
-
 		imageStreamName := imageStream.Name
 		// Check if Repository Exists
 		_, repositoryHttpResponse, repositoryErr := quayClient.GetRepository(quayOrganizationName, imageStreamName)
+		if repositoryHttpResponse == nil {
+			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error creating request to retrieve repository",
+				KeyAndValues: []interface{}{"Namespace", namespace.Name, "Name", imageStreamName},
+				Error:        repositoryErr.Error,
+			})
+		}
 
 		if repositoryErr.Error != nil {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
@@ -320,15 +307,12 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 				KeyAndValues: []interface{}{"Namespace", namespace.Name, "Name", imageStreamName, "Status Code", repositoryHttpResponse.StatusCode},
 				Error:        repositoryErr.Error,
 			})
-
 		}
 
 		// If an Repository reports back that it cannot be found or permission dened
 		if repositoryHttpResponse.StatusCode == 403 || repositoryHttpResponse.StatusCode == 404 {
 			logging.Log.Info("Creating Repository", "Organization", quayOrganizationName, "Name", imageStreamName)
-
 			_, createRepositoryResponse, createRepositoryErr := quayClient.CreateRepository(quayOrganizationName, imageStreamName)
-
 			if createRepositoryErr.Error != nil || createRepositoryResponse.StatusCode != 201 {
 				return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 					Object:       namespace,
@@ -336,9 +320,7 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 					KeyAndValues: []interface{}{"Quay Repository", fmt.Sprintf("%s/%s", quayOrganizationName, imageStreamName), "Status Code", createRepositoryResponse.StatusCode},
 					Error:        createRepositoryErr.Error,
 				})
-
 			}
-
 		} else if repositoryHttpResponse.StatusCode != 200 {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
@@ -346,17 +328,23 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 				KeyAndValues: []interface{}{"Quay Repository", fmt.Sprintf("%s/%s", quayOrganizationName, imageStreamName), "Status Code", repositoryHttpResponse.StatusCode},
 			})
 		}
-
 	}
 
 	return reconcile.Result{}, nil
-
 }
 
 // createRobotAccountAndSecret creates a robot account, creates a secret and adds the secret to the service account
 func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx context.Context, request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string, serviceAccount qotypes.OpenShiftServiceAccount, role qclient.QuayRole, quayName string, quayHostname string) (reconcile.Result, error) {
 	// Setup Robot Account
 	robotAccount, robotAccountResponse, robotAccountError := quayClient.GetOrganizationRobotAccount(quayOrganizationName, string(serviceAccount))
+	if robotAccountResponse == nil {
+		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error occured creating HTTP request to fetch Quay Organization Robot Acccount",
+			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Robot Account", serviceAccount},
+			Error:        robotAccountError.Error,
+		})
+	}
 
 	if robotAccountError.Error != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
@@ -369,23 +357,18 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 
 	// Check to see if Robot Exists
 	if robotAccountResponse.StatusCode == 400 {
-
 		// Create Robot Account
 		robotAccount, robotAccountResponse, robotAccountError = quayClient.CreateOrganizationRobotAccount(quayOrganizationName, string(serviceAccount))
-
 		if robotAccountError.Error != nil || robotAccountResponse.StatusCode != 201 {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
 				Message:      "Error occurred retrieving robot account for Quay Organization",
 				KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Robot Account", serviceAccount, "Status Code", robotAccountResponse.StatusCode},
 			})
-
 		}
-
 	}
 
 	organizationPrototypes, organizationPrototypesResponse, organizationPrototypesError := quayClient.GetPrototypesByOrganization(quayOrganizationName)
-
 	if organizationPrototypesError.Error != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
@@ -393,7 +376,6 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Status Code", robotAccountResponse.StatusCode},
 			Error:        organizationPrototypesError.Error,
 		})
-
 	}
 
 	if organizationPrototypesResponse.StatusCode != 200 {
@@ -402,13 +384,11 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 			Message:      "Error occurred retrieving Prototypes for Quay Organization",
 			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Status Code", robotAccountResponse.StatusCode},
 		})
-
 	}
 
 	if found := qclient.IsRobotAccountInPrototypeByRole(organizationPrototypes.Prototypes, robotAccount.Name, string(role)); !found {
 		// Create Prototype
 		_, robotPrototypeResponse, robotPrototypeError := quayClient.CreateRobotPermissionForOrganization(quayOrganizationName, robotAccount.Name, string(role))
-
 		if robotPrototypeError.Error != nil || robotPrototypeResponse.StatusCode != 200 {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
@@ -417,12 +397,10 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 				Error:        robotPrototypeError.Error,
 			})
 		}
-
 	}
 
 	// Parse out hostname from Quay Hostname
 	quayURL, quayURLErr := url.Parse(quayHostname)
-
 	if quayURLErr != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
@@ -430,13 +408,10 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 			KeyAndValues: []interface{}{"Hostname", quayHostname},
 			Error:        quayURLErr,
 		})
-
 	}
 
 	// Setup Secret for Quay Robot Account
 	robotSecret, robotSecretErr := credentials.GenerateDockerJsonSecret(utils.GenerateDockerJsonSecretNameForServiceAccount(string(serviceAccount), quayName), quayURL.Host, robotAccount.Name, robotAccount.Token, "")
-	robotSecret.ObjectMeta.Namespace = namespace.Name
-
 	if robotSecretErr != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
@@ -446,15 +421,15 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 		})
 	}
 
-	robotCreateSecretErr := r.CoreComponents.ReconcilerBase.CreateOrUpdateResource(ctx, nil, namespace.Name, robotSecret)
+	robotSecret.ObjectMeta.Namespace = namespace.Name
 
+	robotCreateSecretErr := r.CoreComponents.ReconcilerBase.CreateOrUpdateResource(ctx, nil, namespace.Name, robotSecret)
 	if robotCreateSecretErr != nil {
 		return reconcile.Result{Requeue: true}, robotSecretErr
 	}
 
 	existingServiceAccount := &corev1.ServiceAccount{}
 	serviceAccountErr := r.CoreComponents.ReconcilerBase.GetClient().Get(ctx, types.NamespacedName{Namespace: namespace.Name, Name: string(serviceAccount)}, existingServiceAccount)
-
 	if serviceAccountErr != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
@@ -466,11 +441,8 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 	}
 
 	_, updated := r.updateSecretWithMountablePullSecret(existingServiceAccount, robotSecret.Name)
-
 	if updated {
-
 		updatedServiceAccountErr := r.CoreComponents.ReconcilerBase.CreateOrUpdateResource(ctx, nil, namespace.Name, existingServiceAccount)
-
 		if updatedServiceAccountErr != nil {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
@@ -478,26 +450,22 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 				KeyAndValues: []interface{}{"Namespace", namespace.Name, "Service Account", serviceAccount},
 				Error:        updatedServiceAccountErr,
 			})
-
 		}
 	}
 
 	return reconcile.Result{}, nil
-
 }
 
 func (r *NamespaceIntegrationReconciler) cleanupResources(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string) (reconcile.Result, error) {
-
 	logging.Log.Info("Deleting Organization", "Organization Name", quayOrganizationName)
 
-	_, organizationResponse, orgniazationError := quayClient.GetOrganizationByname(quayOrganizationName)
-
-	if orgniazationError.Error != nil {
+	_, organizationResponse, organizationError := quayClient.GetOrganizationByname(quayOrganizationName)
+	if organizationError.Error != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
 			Message:      "Error occurred retrieving Organization",
 			KeyAndValues: []interface{}{"Quay Organization", quayOrganizationName, "Status Code", organizationResponse.StatusCode},
-			Error:        orgniazationError.Error,
+			Error:        organizationError.Error,
 		})
 	}
 
@@ -506,14 +474,22 @@ func (r *NamespaceIntegrationReconciler) cleanupResources(request reconcile.Requ
 		return reconcile.Result{}, nil
 		// Organization is not present
 	} else if organizationResponse.StatusCode == 200 {
-		organizationDeleteResponse, orgniazationDeleteError := quayClient.DeleteOrganization(quayOrganizationName)
+		organizationDeleteResponse, organizationDeleteError := quayClient.DeleteOrganization(quayOrganizationName)
+		if organizationDeleteResponse == nil {
+			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error occurred building HTTP request to delete Organization",
+				KeyAndValues: []interface{}{"Quay Organization", quayOrganizationName},
+				Error:        organizationDeleteError.Error,
+			})
+		}
 
-		if orgniazationDeleteError.Error != nil {
+		if organizationDeleteError.Error != nil {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
 				Message:      "Error occurred deleting Organization",
 				KeyAndValues: []interface{}{"Quay Organization", quayOrganizationName, "Status Code", organizationDeleteResponse.StatusCode},
-				Error:        orgniazationDeleteError.Error,
+				Error:        organizationDeleteError.Error,
 			})
 		}
 
@@ -524,7 +500,6 @@ func (r *NamespaceIntegrationReconciler) cleanupResources(request reconcile.Requ
 				KeyAndValues: []interface{}{"Quay Organization", quayOrganizationName, "Status Code", organizationDeleteResponse.StatusCode},
 			})
 		}
-
 		return reconcile.Result{}, nil
 
 	} else {
@@ -534,24 +509,18 @@ func (r *NamespaceIntegrationReconciler) cleanupResources(request reconcile.Requ
 			KeyAndValues: []interface{}{"Quay Organization", quayOrganizationName, "Status Code", organizationResponse.StatusCode},
 		})
 	}
-
 }
 
 func (r *NamespaceIntegrationReconciler) updateSecretWithMountablePullSecret(serviceAccount *corev1.ServiceAccount, name string) (*corev1.ServiceAccount, bool) {
-
-	updated := false
+	var updated bool
 
 	if found := utils.LocalObjectReferenceNameExists(serviceAccount.ImagePullSecrets, name); !found {
-
 		serviceAccount.ImagePullSecrets = append(serviceAccount.ImagePullSecrets, corev1.LocalObjectReference{Name: name})
-
 		updated = true
 	}
 
 	if found := utils.ObjectReferenceNameExists(serviceAccount.Secrets, name); !found {
-
 		serviceAccount.Secrets = append(serviceAccount.Secrets, corev1.ObjectReference{Name: name})
-
 		updated = true
 	}
 
@@ -560,7 +529,6 @@ func (r *NamespaceIntegrationReconciler) updateSecretWithMountablePullSecret(ser
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *NamespaceIntegrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	//Retriggers a reconcilation of a namespace upon a change to an ImageStream within a namespace. Currently only supports adding repositories to Quay
 	imageStreamToNamespace := handler.MapFunc(
 		func(a client.Object) []reconcile.Request {
@@ -570,9 +538,7 @@ func (r *NamespaceIntegrationReconciler) SetupWithManager(mgr ctrl.Manager) erro
 					Name: a.GetNamespace(),
 				},
 			})
-
 			return res
-
 		})
 
 	return ctrl.NewControllerManagedBy(mgr).

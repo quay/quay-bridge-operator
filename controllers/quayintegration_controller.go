@@ -46,7 +46,6 @@ func (r *QuayIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	instance := &quayv1.QuayIntegration{}
 	err := r.GetClient().Get(ctx, req.NamespacedName, instance)
-
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
@@ -66,22 +65,24 @@ func (r *QuayIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err != nil {
 		return reconcile.Result{Requeue: true}, err
 	}
+
 	instance, err = instance.SetStatus(&quayv1.QuayIntegrationStatus{})
 	if err != nil {
 		return reconcile.Result{Requeue: true}, err
 	}
+
 	err = r.GetClient().Status().Update(ctx, instance)
 	if err != nil {
 		logger.Error(err, "Failed to update QuayIntegration status")
 		return reconcile.Result{Requeue: true}, err
 	}
+
 	logger.Info("Updated QuayIntegration status")
 
 	specBytes, _ = json.Marshal(instance.Spec)
 	r.LastSeenSpec[req.NamespacedName] = string(specBytes)
 
 	return reconcile.Result{Requeue: false}, nil
-
 }
 
 // SetupWithManager sets up the controller with the Manager.
