@@ -8,8 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"github.com/quay/quay-bridge-operator/pkg/utils"
 )
 
 type QuayClient struct {
@@ -172,7 +170,7 @@ func (c *QuayClient) newRequest(method, path string, body interface{}) (*http.Re
 	}
 
 	req, err := http.NewRequest(method, u.String(), buf)
-	if !utils.IsZeroOfUnderlyingType(c.AuthToken) {
+	if c.AuthToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
 	}
 
