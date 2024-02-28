@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -195,7 +194,7 @@ func (c *QuayClient) do(req *http.Request, v interface{}) (*http.Response, error
 
 	if v != nil {
 		if _, ok := v.(*StringValue); ok {
-			responseData, err := ioutil.ReadAll(resp.Body)
+			responseData, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return resp, err
 			}
