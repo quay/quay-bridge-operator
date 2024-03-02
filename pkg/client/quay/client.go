@@ -1,5 +1,7 @@
 package quay
 
+//go:generate mockgen -source=$GOFILE -destination=mocks/client_mock.go -package=quay
+
 import (
 	"bytes"
 	"encoding/json"
@@ -9,14 +11,28 @@ import (
 	"net/url"
 )
 
-type QuayClient struct {
+type HttpClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+type Client struct {
 	BaseURL    *url.URL
-	httpClient *http.Client
+	httpClient HttpClient
 	AuthToken  string
 }
 
-func (c *QuayClient) GetUser() (User, *http.Response, QuayApiError) {
-	req, err := c.newRequest("GET", "/api/v1/user", nil)
+func NewClient(httpClient HttpClient, baseUrl, authToken string) *Client {
+	quayClient := Client{
+		httpClient: httpClient,
+		AuthToken:  authToken,
+	}
+
+	quayClient.BaseURL, _ = url.Parse(baseUrl)
+	return &quayClient
+}
+
+func (c *Client) GetUser() (User, *http.Response, QuayApiError) {
+	req, err := c.NewRequest("GET", "/api/v1/user", nil)
 	if err != nil {
 		return User{}, nil, QuayApiError{Error: err}
 	}
@@ -26,8 +42,8 @@ func (c *QuayClient) GetUser() (User, *http.Response, QuayApiError) {
 	return user, resp, QuayApiError{Error: err}
 }
 
-func (c *QuayClient) GetOrganizationByname(orgName string) (Organization, *http.Response, QuayApiError) {
-	req, err := c.newRequest("GET", fmt.Sprintf("/api/v1/organization/%s", orgName), nil)
+func (c *Client) GetOrganizationByName(orgName string) (Organization, *http.Response, QuayApiError) {
+	req, err := c.NewRequest("GET", fmt.Sprintf("/api/v1/organization/%s", orgName), nil)
 	if err != nil {
 		return Organization{}, nil, QuayApiError{Error: err}
 	}
@@ -37,13 +53,13 @@ func (c *QuayClient) GetOrganizationByname(orgName string) (Organization, *http.
 	return organization, resp, QuayApiError{Error: err}
 }
 
-func (c *QuayClient) CreateOrganization(name string) (StringValue, *http.Response, QuayApiError) {
+func (c *Client) CreateOrganization(name string) (StringValue, *http.Response, QuayApiError) {
 	newOrganization := OrganizationRequest{
 		Name:  name,
 		Email: fmt.Sprintf("%s@redhat.com", name),
 	}
 
-	req, err := c.newRequest("POST", "/api/v1/organization/", newOrganization)
+	req, err := c.NewRequest("POST", "/api/v1/organization/", newOrganization)
 	if err != nil {
 		return StringValue{}, nil, QuayApiError{Error: err}
 	}
@@ -54,8 +70,8 @@ func (c *QuayClient) CreateOrganization(name string) (StringValue, *http.Respons
 	return newOrganizationResponse, resp, QuayApiError{Error: err}
 }
 
-func (c *QuayClient) GetOrganizationRobotAccount(organizationName string, robotName string) (RobotAccount, *http.Response, QuayApiError) {
-	req, err := c.newRequest("GET", fmt.Sprintf("/api/v1/organization/%s/robots/%s", organizationName, robotName), nil)
+func (c *Client) GetOrganizationRobotAccount(organizationName, robotName string) (RobotAccount, *http.Response, QuayApiError) {
+	req, err := c.NewRequest("GET", fmt.Sprintf("/api/v1/organization/%s/robots/%s", organizationName, robotName), nil)
 	if err != nil {
 		return RobotAccount{}, nil, QuayApiError{Error: err}
 	}
@@ -66,8 +82,8 @@ func (c *QuayClient) GetOrganizationRobotAccount(organizationName string, robotN
 	return getOrganizationRobotResponse, resp, QuayApiError{Error: err}
 }
 
-func (c *QuayClient) GetPrototypesByOrganization(organizationName string) (PrototypesResponse, *http.Response, QuayApiError) {
-	req, err := c.newRequest("GET", fmt.Sprintf("/api/v1/organization/%s/prototypes", organizationName), nil)
+func (c *Client) GetPrototypesByOrganization(organizationName string) (PrototypesResponse, *http.Response, QuayApiError) {
+	req, err := c.NewRequest("GET", fmt.Sprintf("/api/v1/organization/%s/prototypes", organizationName), nil)
 	if err != nil {
 		return PrototypesResponse{}, nil, QuayApiError{Error: err}
 	}
@@ -78,8 +94,8 @@ func (c *QuayClient) GetPrototypesByOrganization(organizationName string) (Proto
 	return getPrototypeResponse, resp, QuayApiError{Error: err}
 }
 
-func (c *QuayClient) CreateOrganizationRobotAccount(organizationName string, robotName string) (RobotAccount, *http.Response, QuayApiError) {
-	req, err := c.newRequest("PUT", fmt.Sprintf("/api/v1/organization/%s/robots/%s", organizationName, robotName), nil)
+func (c *Client) CreateOrganizationRobotAccount(organizationName, robotName string) (RobotAccount, *http.Response, QuayApiError) {
+	req, err := c.NewRequest("PUT", fmt.Sprintf("/api/v1/organization/%s/robots/%s", organizationName, robotName), nil)
 	if err != nil {
 		return RobotAccount{}, nil, QuayApiError{Error: err}
 	}
@@ -90,8 +106,8 @@ func (c *QuayClient) CreateOrganizationRobotAccount(organizationName string, rob
 	return createOrganizationRobotResponse, resp, QuayApiError{Error: err}
 }
 
-func (c *QuayClient) DeleteOrganization(orgName string) (*http.Response, QuayApiError) {
-	req, err := c.newRequest("DELETE", fmt.Sprintf("/api/v1/organization/%s", orgName), nil)
+func (c *Client) DeleteOrganization(orgName string) (*http.Response, QuayApiError) {
+	req, err := c.NewRequest("DELETE", fmt.Sprintf("/api/v1/organization/%s", orgName), nil)
 	if err != nil {
 		return nil, QuayApiError{Error: err}
 	}
@@ -101,7 +117,7 @@ func (c *QuayClient) DeleteOrganization(orgName string) (*http.Response, QuayApi
 	return resp, QuayApiError{Error: err}
 }
 
-func (c *QuayClient) CreateRobotPermissionForOrganization(organizationName string, robotAccount string, role string) (Prototype, *http.Response, QuayApiError) {
+func (c *Client) CreateRobotPermissionForOrganization(organizationName, robotAccount, role string) (Prototype, *http.Response, QuayApiError) {
 	robotOrganizationPermission := Prototype{
 		Role: role,
 		Delegate: PrototypeDelegate{
@@ -112,7 +128,7 @@ func (c *QuayClient) CreateRobotPermissionForOrganization(organizationName strin
 		},
 	}
 
-	req, err := c.newRequest("POST", fmt.Sprintf("/api/v1/organization/%s/prototypes", organizationName), robotOrganizationPermission)
+	req, err := c.NewRequest("POST", fmt.Sprintf("/api/v1/organization/%s/prototypes", organizationName), robotOrganizationPermission)
 	if err != nil {
 		return Prototype{}, nil, QuayApiError{Error: err}
 	}
@@ -123,8 +139,8 @@ func (c *QuayClient) CreateRobotPermissionForOrganization(organizationName strin
 	return newPrototypeResponse, resp, QuayApiError{Error: err}
 }
 
-func (c *QuayClient) GetRepository(orgName string, repositoryName string) (Repository, *http.Response, QuayApiError) {
-	req, err := c.newRequest("GET", fmt.Sprintf("/api/v1/repository/%s/%s", orgName, repositoryName), nil)
+func (c *Client) GetRepository(orgName, repositoryName string) (Repository, *http.Response, QuayApiError) {
+	req, err := c.NewRequest("GET", fmt.Sprintf("/api/v1/repository/%s/%s", orgName, repositoryName), nil)
 	if err != nil {
 		return Repository{}, nil, QuayApiError{Error: err}
 	}
@@ -135,7 +151,7 @@ func (c *QuayClient) GetRepository(orgName string, repositoryName string) (Repos
 	return repository, resp, QuayApiError{Error: err}
 }
 
-func (c *QuayClient) CreateRepository(namespace, name string) (RepositoryRequest, *http.Response, QuayApiError) {
+func (c *Client) CreateRepository(namespace, name string) (RepositoryRequest, *http.Response, QuayApiError) {
 	newRepository := RepositoryRequest{
 		Repository:  name,
 		Namespace:   namespace,
@@ -144,7 +160,7 @@ func (c *QuayClient) CreateRepository(namespace, name string) (RepositoryRequest
 		Description: "",
 	}
 
-	req, err := c.newRequest("POST", "/api/v1/repository", newRepository)
+	req, err := c.NewRequest("POST", "/api/v1/repository", newRepository)
 	if err != nil {
 		return RepositoryRequest{}, nil, QuayApiError{Error: err}
 	}
@@ -155,7 +171,7 @@ func (c *QuayClient) CreateRepository(namespace, name string) (RepositoryRequest
 	return newRepositoryResponse, resp, QuayApiError{Error: err}
 }
 
-func (c *QuayClient) newRequest(method, path string, body interface{}) (*http.Request, error) {
+func (c *Client) NewRequest(method, path string, body interface{}) (*http.Request, error) {
 	rel := &url.URL{Path: path}
 	u := c.BaseURL.ResolveReference(rel)
 
@@ -169,12 +185,12 @@ func (c *QuayClient) newRequest(method, path string, body interface{}) (*http.Re
 	}
 
 	req, err := http.NewRequest(method, u.String(), buf)
-	if c.AuthToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
-	}
-
 	if err != nil {
 		return nil, err
+	}
+
+	if c.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
 	}
 
 	if body != nil {
@@ -185,7 +201,7 @@ func (c *QuayClient) newRequest(method, path string, body interface{}) (*http.Re
 	return req, nil
 }
 
-func (c *QuayClient) do(req *http.Request, v interface{}) (*http.Response, error) {
+func (c *Client) do(req *http.Request, v interface{}) (*http.Response, error) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -210,14 +226,4 @@ func (c *QuayClient) do(req *http.Request, v interface{}) (*http.Response, error
 	}
 
 	return resp, err
-}
-
-func NewClient(httpClient *http.Client, baseUrl string, authToken string) *QuayClient {
-	quayClient := QuayClient{
-		httpClient: httpClient,
-		AuthToken:  authToken,
-	}
-
-	quayClient.BaseURL, _ = url.Parse(baseUrl)
-	return &quayClient
 }
