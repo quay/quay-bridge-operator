@@ -42,13 +42,6 @@ type Prototype struct {
 	Delegate PrototypeDelegate `json:"delegate"`
 }
 
-type PrototypeDelegate struct {
-	Kind      string `json:"kind"`
-	Name      string `json:"name"`
-	Robot     bool   `json:"is_robot"`
-	OrgMember bool   `json:"is_org_member"`
-}
-
 type Repository struct {
 	TrustEnabled   bool           `json:"trust_enabled"`
 	Description    string         `json:"description"`
@@ -81,6 +74,13 @@ type RepositoryRequest struct {
 	Kind        string `json:"repo_kind"`
 }
 
+type PrototypeDelegate struct {
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Robot     bool   `json:"is_robot"`
+	OrgMember bool   `json:"is_org_member"`
+}
+
 // StringValue represents an object containing a single string
 type StringValue struct {
 	Value string
@@ -91,10 +91,15 @@ type QuayApiError struct {
 }
 
 func IsRobotAccountInPrototypeByRole(prototypes []Prototype, robotAccount string, role string) bool {
+
 	for _, prototype := range prototypes {
-		if prototype.Role == role && prototype.Delegate.Robot && prototype.Delegate.Name == robotAccount {
+
+		if prototype.Role == role && prototype.Delegate.Robot == true && prototype.Delegate.Name == robotAccount {
 			return true
 		}
+
 	}
+
 	return false
+
 }
