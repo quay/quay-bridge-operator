@@ -2,11 +2,16 @@ package utils
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/quay/quay-bridge-operator/pkg/constants"
 	"github.com/quay/quay-bridge-operator/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
 )
+
+func IsZeroOfUnderlyingType(x interface{}) bool {
+	return reflect.DeepEqual(x, reflect.Zero(reflect.TypeOf(x)).Interface())
+}
 
 func RemoveItemsFromSlice(s []string, r []string) []string {
 
