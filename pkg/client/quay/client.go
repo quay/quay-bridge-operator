@@ -5,11 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"github.com/quay/quay-bridge-operator/pkg/utils"
 )
 
 type QuayClient struct {
@@ -172,7 +169,7 @@ func (c *QuayClient) newRequest(method, path string, body interface{}) (*http.Re
 	}
 
 	req, err := http.NewRequest(method, u.String(), buf)
-	if !utils.IsZeroOfUnderlyingType(c.AuthToken) {
+	if c.AuthToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
 	}
 
@@ -197,7 +194,7 @@ func (c *QuayClient) do(req *http.Request, v interface{}) (*http.Response, error
 
 	if v != nil {
 		if _, ok := v.(*StringValue); ok {
-			responseData, err := ioutil.ReadAll(resp.Body)
+			responseData, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return resp, err
 			}
