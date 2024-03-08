@@ -52,12 +52,10 @@ type BuildIntegrationReconciler struct {
 //+kubebuilder:rbac:groups=build.openshift.io,resources=builds,verbs=get;list;watch;create;update;patch
 
 func (r *BuildIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
 	logging.Log.Info("Reconciling Build", "Request.Namespace", req.Namespace, "Request.Name", req.Name)
 
 	instance := &buildv1.Build{}
 	err := r.CoreComponents.ReconcilerBase.GetClient().Get(ctx, req.NamespacedName, instance)
-
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
@@ -69,7 +67,6 @@ func (r *BuildIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	// Get ImageStream Tag
 	buildImageStreamTagAnnotation, found := instance.GetAnnotations()[constants.BuildDestinationImageStreamAnnotation]
-
 	if !found {
 		// If annotation not found, ImageStreamTag import has been completed
 		return reconcile.Result{}, nil
@@ -88,7 +85,6 @@ func (r *BuildIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	buildImageStreamNamespace := buildImageStreamComponents[0]
-
 	imageNameTagComponents := strings.Split(buildImageStreamComponents[1], ":")
 
 	if len(imageNameTagComponents) != 2 {
@@ -98,7 +94,6 @@ func (r *BuildIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			KeyAndValues: []interface{}{"Namespace", instance.Namespace, "Build", instance.Name, "Annotation", buildImageStreamTagAnnotation, "Actual Size", len(imageNameTagComponents)},
 			Reason:       "ProcessingError",
 		})
-
 	}
 
 	buildImageName := imageNameTagComponents[0]
@@ -107,7 +102,6 @@ func (r *BuildIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	logging.Log.Info("Importing ImageStream after Build", "ImageStream Namespace", buildImageStreamNamespace, "ImageStream Name", buildImageName, "ImageStream Tag", buildImageTag)
 
 	quayIntegration, result, err := r.CoreComponents.GetQuayIntegration(instance)
-
 	if err != nil {
 		return result, err
 	}
@@ -115,7 +109,6 @@ func (r *BuildIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// First, Get the ImageStream
 	existingImageStream := &imagev1.ImageStream{}
 	err = r.CoreComponents.ReconcilerBase.GetClient().Get(ctx, types.NamespacedName{Namespace: buildImageStreamNamespace, Name: buildImageName}, existingImageStream)
-
 	if err != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       instance,
@@ -123,7 +116,6 @@ func (r *BuildIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			KeyAndValues: []interface{}{"Namespace", buildImageStreamNamespace, "Build", buildImageName},
 			Reason:       "ProcessingError",
 		})
-
 	}
 
 	isi := &imagev1.ImageStreamImport{
@@ -154,7 +146,6 @@ func (r *BuildIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	err = r.CoreComponents.ReconcilerBase.GetClient().Create(ctx, isi)
-
 	if err != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       instance,
@@ -167,7 +158,6 @@ func (r *BuildIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	// Update the Build
 	instance.GetAnnotations()[constants.BuildDestinationImageStreamTagImportedAnnotation] = "true"
-
 	err = r.CoreComponents.ReconcilerBase.GetClient().Update(ctx, instance)
 	if err != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
@@ -180,7 +170,6 @@ func (r *BuildIntegrationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	return reconcile.Result{}, nil
-
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -188,12 +177,8 @@ func (r *BuildIntegrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	buildPredicates := []predicate.Predicate{
 		predicate.Funcs{
-
 			UpdateFunc: func(e event.UpdateEvent) bool {
-
 				newBuild, ok := e.ObjectNew.(*buildv1.Build)
-
-				// Check to see if it has the Managed Annotations
 				_, managedAnnotationFound := e.ObjectNew.GetAnnotations()[constants.BuildOperatorManagedAnnotation]
 				_, imageStreamImportedAnnotationFound := e.ObjectNew.GetAnnotations()[constants.BuildDestinationImageStreamTagImportedAnnotation]
 
@@ -203,11 +188,9 @@ func (r *BuildIntegrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 				return true
 			},
-
 			CreateFunc: func(e event.CreateEvent) bool {
 				return false
 			},
-
 			DeleteFunc: func(e event.DeleteEvent) bool {
 				return false
 			},
