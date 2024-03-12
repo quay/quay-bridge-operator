@@ -5,7 +5,6 @@ import (
 )
 
 func TestIsRobotAccountInPrototypeByRole(t *testing.T) {
-
 	cases := []struct {
 		name         string
 		prototypes   []Prototype
@@ -64,11 +63,8 @@ func TestIsRobotAccountInPrototypeByRole(t *testing.T) {
 	}
 
 	for i, c := range cases {
-
 		t.Run(c.name, func(t *testing.T) {
-
 			result := IsRobotAccountInPrototypeByRole(c.prototypes, c.robotAccount, c.role)
-
 			if c.expected != result {
 				t.Errorf("Test case %d did not match\nExpected: %#v\nActual: %#v", i, c.expected, result)
 			}
