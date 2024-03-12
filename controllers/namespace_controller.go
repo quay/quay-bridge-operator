@@ -222,8 +222,8 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 	return reconcile.Result{}, nil
 }
 
-func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string, quayName string, quayHostname string) (reconcile.Result, error) {
-	_, organizationResponse, organizationError := quayClient.GetOrganizationByname(quayOrganizationName)
+func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.Client, quayOrganizationName string, quayName string, quayHostname string) (reconcile.Result, error) {
+	_, organizationResponse, organizationError := quayClient.GetOrganizationByName(quayOrganizationName)
 
 	if organizationError.Error != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
@@ -334,7 +334,7 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 }
 
 // createRobotAccountAndSecret creates a robot account, creates a secret and adds the secret to the service account
-func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx context.Context, request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string, serviceAccount qotypes.OpenShiftServiceAccount, role qclient.QuayRole, quayName string, quayHostname string) (reconcile.Result, error) {
+func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx context.Context, request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.Client, quayOrganizationName string, serviceAccount qotypes.OpenShiftServiceAccount, role qclient.QuayRole, quayName string, quayHostname string) (reconcile.Result, error) {
 	// Setup Robot Account
 	robotAccount, robotAccountResponse, robotAccountError := quayClient.GetOrganizationRobotAccount(quayOrganizationName, string(serviceAccount))
 	if robotAccountResponse == nil {
@@ -456,10 +456,10 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 	return reconcile.Result{}, nil
 }
 
-func (r *NamespaceIntegrationReconciler) cleanupResources(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.QuayClient, quayOrganizationName string) (reconcile.Result, error) {
+func (r *NamespaceIntegrationReconciler) cleanupResources(request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.Client, quayOrganizationName string) (reconcile.Result, error) {
 	logging.Log.Info("Deleting Organization", "Organization Name", quayOrganizationName)
 
-	_, organizationResponse, organizationError := quayClient.GetOrganizationByname(quayOrganizationName)
+	_, organizationResponse, organizationError := quayClient.GetOrganizationByName(quayOrganizationName)
 	if organizationError.Error != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
