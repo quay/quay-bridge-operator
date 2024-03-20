@@ -26,7 +26,14 @@ metadata:
     containerImage: registry-proxy.engineering.redhat.com/rh-osbs/quay-quay-bridge-operator-rhel8:v3.6.0
     createdAt: 2021-07-09 14:07 UTC
     description: Enhance OCP using Red Hat Quay container registry
-    operators.openshift.io/infrastructure-features: '["disconnected"]'
+    operators.openshift.io/infrastructure-features: '["disconnected", "fips"]'
+    features.operators.openshift.io/disconnected: "true"
+    features.operators.openshift.io/fips-compliant: "true"
+    features.operators.openshift.io/proxy-aware: "false"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "false"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
     operators.operatorframework.io/builder: operator-sdk-v1.9.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/quay/quay-bridge-operator
