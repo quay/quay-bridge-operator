@@ -7,7 +7,14 @@ metadata:
     categories: OpenShift Optional
     containerImage: quay.io/quay/quay-bridge-operator:latest
     description: Enhance OCP using Red Hat Quay container registry
-    operators.openshift.io/infrastructure-features: '["Disconnected"]'
+    operators.openshift.io/infrastructure-features: '["disconnected", "fips"]'
+    features.operators.openshift.io/disconnected: "true"
+    features.operators.openshift.io/fips-compliant: "true"
+    features.operators.openshift.io/proxy-aware: "false"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "false"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
     repository: https://github.com/quay/quay-bridge-operator
   name: quay-bridge-operator.v0.0.0
   namespace: placeholder
