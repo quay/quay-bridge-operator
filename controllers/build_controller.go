@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // BuildIntegrationReconciler reconciles a QuayIntegration object
@@ -199,6 +198,6 @@ func (r *BuildIntegrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&buildv1.Build{}).
-		Watches(&source.Kind{Type: &buildv1.Build{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(buildPredicates...)).
+		Watches(&buildv1.Build{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(buildPredicates...)).
 		Complete(r)
 }

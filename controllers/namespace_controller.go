@@ -47,7 +47,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var (
@@ -531,18 +530,18 @@ func (r *NamespaceIntegrationReconciler) updateSecretWithMountablePullSecret(ser
 func (r *NamespaceIntegrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	//Retriggers a reconcilation of a namespace upon a change to an ImageStream within a namespace. Currently only supports adding repositories to Quay
 	imageStreamToNamespace := handler.MapFunc(
-		func(a client.Object) []reconcile.Request {
-			res := []reconcile.Request{}
-			res = append(res, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name: a.GetNamespace(),
+		func(context context.Context, a client.Object) []reconcile.Request {
+			return []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Name: a.GetNamespace(),
+					},
 				},
-			})
-			return res
+			}
 		})
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Namespace{}).
-		Watches(&source.Kind{Type: &imagev1.ImageStream{}}, handler.EnqueueRequestsFromMapFunc(imageStreamToNamespace)).
+		Watches(&imagev1.ImageStream{}, handler.EnqueueRequestsFromMapFunc(imageStreamToNamespace)).
 		Complete(r)
 }
