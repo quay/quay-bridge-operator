@@ -25,7 +25,7 @@ import (
 
 type QuayIntegrationMutator struct {
 	Client  client.Client
-	decoder *admission.Decoder
+	decoder admission.Decoder
 	Log     logr.Logger
 }
 
@@ -218,7 +218,7 @@ func escapeJSONPointer(s string) string {
 }
 
 // InjectDecoder injects the decoder.
-func (a *QuayIntegrationMutator) InjectDecoder(d *admission.Decoder) error {
+func (a *QuayIntegrationMutator) InjectDecoder(d admission.Decoder) error {
 	a.decoder = d
 	return nil
 }
