@@ -220,8 +220,8 @@ github.com/redhat-cop/operator-utils/pkg/util
 github.com/redhat-cop/operator-utils/pkg/util/apis
 github.com/redhat-cop/operator-utils/pkg/util/dynamicclient
 github.com/redhat-cop/operator-utils/pkg/util/templates
-# github.com/shopspring/decimal v1.2.0
-## explicit; go 1.13
+# github.com/shopspring/decimal v1.4.0
+## explicit; go 1.10
 github.com/shopspring/decimal
 # github.com/spf13/cast v1.3.1
 ## explicit
