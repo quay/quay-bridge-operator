@@ -46,13 +46,13 @@ limitations under the License.
 //
 // Frequently asked questions about using controller-runtime and designing
 // controllers can be found at
-// https://github.com/kubernetes-sigs/controller-runtime/blob/master/FAQ.md.
+// https://github.com/kubernetes-sigs/controller-runtime/blob/main/FAQ.md.
 //
 // # Managers
 //
 // Every controller and webhook is ultimately run by a Manager (pkg/manager). A
 // manager is responsible for running controllers and webhooks, and setting up
-// common dependencies (pkg/runtime/inject), like shared caches and clients, as
+// common dependencies, like shared caches and clients, as
 // well as managing leader election (pkg/leaderelection).  Managers are
 // generally configured to gracefully shut down controllers on pod termination
 // by wiring up a signal handler (pkg/manager/signals).
@@ -87,7 +87,7 @@ limitations under the License.
 // during writes (nor does it promise sequential create/get coherence), and code
 // should not assume a get immediately following a create/update will return
 // the updated resource. Caches may also have indexes, which can be created via
-// a FieldIndexer (pkg/client) obtained from the manager.  Indexes can used to
+// a FieldIndexer (pkg/client) obtained from the manager.  Indexes can be used to
 // quickly and easily look up all objects with certain fields set.  Reconcilers
 // may retrieve event recorders (pkg/recorder) to emit events using the
 // manager.
