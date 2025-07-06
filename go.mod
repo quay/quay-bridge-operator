@@ -10,7 +10,7 @@ require (
 	github.com/onsi/gomega v1.29.0
 	github.com/openshift/api v0.0.0-20210202165416-a9e731090f5e
 	github.com/redhat-cop/operator-utils v1.3.5
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.4.0
 	golang.org/x/sync v0.3.0
 	gomodules.xyz/jsonpatch/v2 v2.4.0
