@@ -12,7 +12,7 @@ require (
 	github.com/redhat-cop/operator-utils v1.3.5
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/mock v0.4.0
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.16.0
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	k8s.io/api v0.26.6
 	k8s.io/apimachinery v0.26.6
