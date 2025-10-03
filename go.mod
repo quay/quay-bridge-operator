@@ -6,7 +6,7 @@ toolchain go1.23.7
 
 require (
 	github.com/go-logr/logr v1.2.4
-	github.com/onsi/ginkgo v1.16.5
+	github.com/onsi/ginkgo/v2 v2.26.0
 	github.com/onsi/gomega v1.27.8
 	github.com/openshift/api v0.0.0-20210202165416-a9e731090f5e
 	github.com/redhat-cop/operator-utils v1.3.5
