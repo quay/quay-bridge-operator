@@ -2,7 +2,7 @@ module github.com/quay/quay-bridge-operator
 
 go 1.23.0
 
-toolchain go1.23.7
+toolchain go1.25.3
 
 require (
 	github.com/go-logr/logr v1.2.4
