@@ -21,16 +21,16 @@ Syncs namespaces as Quay organizations, manages robot accounts, rewrites builds 
 
 Read the specific documentation below if your task involves these keywords:
 
-- **Controllers, CRD, Webhook, Reconciler, Finalizer** -> `read_file agent_docs/architecture.md`
+- **Controllers, CRD, Webhook, Reconciler, Finalizer** -> `read file agent_docs/architecture.md`
   - **CRITICAL**: Understand the three-controller design before modifying reconciliation logic.
 
-- **Build, Test, Deploy, Run, Make, Docker** -> `read_file agent_docs/development.md`
+- **Build, Test, Deploy, Run, Make, Docker** -> `read file agent_docs/development.md`
   - **CRITICAL**: Use `make test` for full test suite with envtest setup.
 
-- **Quay, API, Organization, Robot, Repository, Prototype** -> `read_file agent_docs/quay-api.md`
+- **Quay, API, Organization, Robot, Repository, Prototype** -> `read file agent_docs/quay-api.md`
   - **CRITICAL**: All Quay client methods return (result, *http.Response, error) tuple.
 
-- **Commit, PR, Jira, Contribution** -> `read_file agent_docs/contributing.md`
+- **Commit, PR, Jira, Contribution** -> `read file agent_docs/contributing.md`
   - **CRITICAL**: All changes require a PROJQUAY Jira reference.
 
 ## Key Files
