@@ -48,3 +48,18 @@ Read the specific documentation below if your task involves these keywords:
 - **Style**: Follow existing Go idioms, use controller-runtime patterns
 - **Testing**: Mocks in `pkg/client/quay/mocks/`, use envtest for controller tests
 - **Safety**: Never commit secrets; webhook requires TLS certificates
+
+## Contextification Addendum
+
+Low-token routing:
+
+- API type: `api/v1/`
+- Controllers: `controllers/`
+- Quay client: `pkg/client/quay/`
+- Webhook: `pkg/webhook/`
+- Samples/manifests: `config/`
+- E2E helper: `hack/test-e2e.sh`
+
+Commands: `make build`, `make test`, `make fmt && make vet`, `make run`, `make deploy IMG=<image>`, `make test-e2e`.
+
+Guardrails: keep `QuayIntegration` compatible, never commit OAuth tokens or kubeconfigs, and preserve webhook TLS behavior.

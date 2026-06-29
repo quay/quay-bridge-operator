@@ -214,3 +214,24 @@ Once the command completes, navigate to Quay and confirm the _openshift_e2e-demo
 Best practices dictate that all communications between a client and an image registry be facilitated through secure means. Communications should all leverage HTTPS/TLS with a certificate trust between the parties. While Quay can be configured to serve in an insecure configuration, proper certificates should be utilized on the server and configured on the client. Follow the [OpenShift documentation](https://docs.openshift.com/container-platform/4.7/security/certificate_types_descriptions/proxy-certificates.html) for adding and managing certificates at the container runtime level. 
 
 
+## Contextification Addendum
+
+```mermaid
+flowchart LR
+    cr[QuayIntegration CR]
+    operator[quay-bridge-operator]
+    quay[Quay API]
+    streams[ImageStreams]
+    secrets[Robot pull secrets]
+    builds[OpenShift Builds]
+
+    cr --> operator
+    operator <--> quay
+    operator --> streams
+    operator --> secrets
+    streams --> builds
+```
+
+Key paths: `api/v1/`, `controllers/`, `pkg/client/quay/`, `pkg/webhook/`, `config/`, and `hack/test-e2e.sh`.
+
+Use `make build`, `make test`, `make fmt && make vet`, `make run`, `make deploy IMG=<image>`, and `make test-e2e`.
