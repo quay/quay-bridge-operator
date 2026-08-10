@@ -1,0 +1,9 @@
+---
+kind: ImageStream
+apiVersion: image.openshift.io/v1
+spec:
+  tags:
+  - name: quay-bridge-operator-rhel9
+    from:
+      kind: DockerImage
+      name: registry-proxy.engineering.redhat.com/rh-osbs/quay-quay-bridge-operator-rhel8:v3.6.0
