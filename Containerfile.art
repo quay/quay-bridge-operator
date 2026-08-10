@@ -1,0 +1,31 @@
+FROM registry.redhat.io/ubi9/go-toolset:1.25 AS builder
+
+WORKDIR /workspace
+
+COPY go.mod go.mod
+COPY go.sum go.sum
+COPY vendor vendor
+
+COPY main.go main.go
+COPY api/ api/
+COPY controllers/ controllers/
+COPY pkg/ pkg/
+
+RUN CGO_ENABLED=1 GO111MODULE=on go build -a -o manager main.go
+
+FROM registry.redhat.io/ubi9/ubi-minimal:latest
+
+LABEL com.redhat.component="quay-bridge-operator-container"
+LABEL name="quay/quay-bridge-operator-rhel9"
+LABEL io.k8s.display-name="Red Hat Quay Bridge Operator"
+LABEL io.k8s.description="Red Hat Quay Bridge Operator image"
+LABEL io.openshift.tags="quay"
+LABEL summary="Red Hat Quay Bridge Operator"
+LABEL description="Red Hat Quay Bridge Operator"
+LABEL vendor="Red Hat, Inc."
+LABEL maintainer="quay-devel@redhat.com"
+
+WORKDIR /
+COPY --from=builder /workspace/manager .
+USER 65532:65532
+ENTRYPOINT ["/manager"]
