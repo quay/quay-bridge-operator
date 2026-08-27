@@ -16,7 +16,7 @@ RUN CGO_ENABLED=1 GO111MODULE=on go build -a -o manager main.go
 FROM registry.redhat.io/ubi9/ubi-minimal:latest
 
 LABEL com.redhat.component="quay-bridge-operator-container"
-LABEL name="quay/quay-bridge-operator-rhel9"
+LABEL name="quay/quay-bridge-rhel9-operator"
 LABEL io.k8s.display-name="Red Hat Quay Bridge Operator"
 LABEL io.k8s.description="Red Hat Quay Bridge Operator image"
 LABEL io.openshift.tags="quay"
