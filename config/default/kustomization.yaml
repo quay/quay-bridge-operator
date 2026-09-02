@@ -21,8 +21,10 @@ bases:
   - ../webhook
   # [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'. 'WEBHOOK' components are required.
   - ../certmanager
-# [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
-#- ../prometheus
+  # [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
+  #- ../prometheus
+  # Default network policy: to enable, uncomment the following line
+  # - ../networkpolicy
 
 patchesStrategicMerge:
   # Protect the /metrics endpoint by putting it behind auth.
