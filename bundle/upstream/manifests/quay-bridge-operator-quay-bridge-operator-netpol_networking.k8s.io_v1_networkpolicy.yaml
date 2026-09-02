@@ -1,0 +1,54 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: quay-bridge-operator-quay-bridge-operator-netpol
+spec:
+  podSelector:
+    matchLabels:
+      name: quay-bridge-operator
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:
+  # Kube API server
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+  # Egress traffic to Quay instance (can live inside and outside of the cluster)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+  # DNS resolution: needs to be opened towards everyone to properly resolve Quay instances
+  # outside of the cluster where QBO is deployed
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+  ingress:
+  # Prometheus metrics scraping
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: openshift-monitoring
+    ports:
+    - protocol: TCP
+      port: 8443
+  # Webhook access and health probes: no explicit from selector since these
+  # might come from host-network sources (kube-apiserver, kubelet)
+  - from:
+    ports:
+    - protocol: TCP
+      port: 9443
+    - protocol: TCP
+      port: 8081
