@@ -1,5 +1,6 @@
 FROM scratch
 
+LABEL name="quay/quay-bridge-operator-bundle"
 LABEL com.redhat.delivery.operator.bundle=true
 LABEL com.redhat.delivery.openshift.ocp.versions="v4.7-v4.9"
 LABEL com.redhat.openshift.versions="v4.7-v4.9"
