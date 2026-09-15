@@ -1,0 +1,13 @@
+---
+updates:
+  - file: "downstream/manifests/quay-bridge-operator.clusterserviceversion.yaml"
+    update_list:
+      - search: "olm.skipRange: \">=3.5.x <3.6.0\""
+        replace: "olm.skipRange: \">=3.14.x <3.18.2\""
+      - search: "name: quay-bridge-operator.v3.6.0"
+        replace: "name: quay-bridge-operator.v3.18.2"
+      - search: "version: 3.6.0"
+        replace: "version: 3.18.2"
+external-images:
+  - search: "quay.io/coreos/kube-rbac-proxy:v0.5.0"
+    replace: "registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:latest"
