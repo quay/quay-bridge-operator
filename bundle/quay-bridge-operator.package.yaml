@@ -2,5 +2,5 @@
 packageName: quay-bridge-operator
 channels:
 - name: stable-3.18
-  currentCSV: quay-bridge-operator.3.18.2
+  currentCSV: quay-bridge-operator.3.18.1
 defaultChannel: stable-3.18
