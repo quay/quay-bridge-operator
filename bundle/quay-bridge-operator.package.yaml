@@ -3,4 +3,6 @@ packageName: quay-bridge-operator
 channels:
 - name: stable-3.18
   currentCSV: quay-bridge-operator.3.18.1
-defaultChannel: stable-3.18
+- name: stable-5.0
+  currentCSV: quay-bridge-operator.v5.0.0
+defaultChannel: stable-5.0
