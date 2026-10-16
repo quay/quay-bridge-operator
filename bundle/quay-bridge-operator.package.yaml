@@ -1,0 +1,6 @@
+---
+packageName: quay-bridge-operator
+channels:
+- name: stable-3.12
+  currentCSV: quay-bridge-operator.3.12.24
+defaultChannel: stable-3.12
