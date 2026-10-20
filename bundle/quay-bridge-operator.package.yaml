@@ -1,0 +1,6 @@
+---
+packageName: quay-bridge-operator
+channels:
+- name: stable-5.1
+  currentCSV: quay-bridge-operator.v5.1.0
+defaultChannel: stable-5.1
