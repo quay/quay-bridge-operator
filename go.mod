@@ -8,7 +8,7 @@ require (
 	github.com/go-logr/logr v1.2.4
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.29.0
-	github.com/openshift/api v0.0.0-20210202165416-a9e731090f5e
+	github.com/openshift/api c974eeafe3f1
 	github.com/redhat-cop/operator-utils v1.3.5
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/mock v0.4.0
