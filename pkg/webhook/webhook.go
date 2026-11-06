@@ -138,7 +138,10 @@ func getAdmissionResponseForBuild(build *buildv1.Build, quayIntegration *quayv1.
 
 	quayRegistryHostname, err := quayIntegration.GetRegistryHostname()
 
-	if (build.Spec.Strategy.DockerStrategy == nil && build.Spec.Strategy.SourceStrategy == nil) || build.Spec.CommonSpec.Output.To.Kind != "ImageStreamTag" {
+	// Builds with empty output (output: {}) leave Output.To nil; allow without mutation.
+	if build.Spec.CommonSpec.Output.To == nil ||
+		(build.Spec.Strategy.DockerStrategy == nil && build.Spec.Strategy.SourceStrategy == nil) ||
+		build.Spec.CommonSpec.Output.To.Kind != "ImageStreamTag" {
 		return &admissionv1.AdmissionResponse{
 			Allowed: true,
 		}
