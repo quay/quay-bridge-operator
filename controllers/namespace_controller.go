@@ -224,12 +224,20 @@ func (r *NamespaceIntegrationReconciler) Reconcile(ctx context.Context, req ctrl
 
 func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.Client, quayOrganizationName string, quayName string, quayHostname string) (reconcile.Result, error) {
 	_, organizationResponse, organizationError := quayClient.GetOrganizationByName(quayOrganizationName)
+	if quayHTTPResponseMissing(organizationResponse) {
+		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error creating request to retrieve Quay Organization",
+			KeyAndValues: []interface{}{"Organization", quayOrganizationName},
+			Error:        organizationError.Error,
+		})
+	}
 
 	if organizationError.Error != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
 			Message:      "Error occurred retrieving Quay Organization",
-			KeyAndValues: []interface{}{"Organization", quayOrganizationName},
+			KeyAndValues: []interface{}{"Organization", quayOrganizationName, "Status Code", organizationResponse.StatusCode},
 			Error:        organizationError.Error,
 		})
 	}
@@ -240,12 +248,20 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 		logging.Log.Info("Organization Does Not Exist", "Name", quayOrganizationName)
 
 		_, createOrganizationResponse, createOrganizationError := quayClient.CreateOrganization(quayOrganizationName)
+		if quayHTTPResponseMissing(createOrganizationResponse) {
+			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error creating request to create Quay Organization",
+				KeyAndValues: []interface{}{"Organization", quayOrganizationName},
+				Error:        createOrganizationError.Error,
+			})
+		}
 		if createOrganizationError.Error != nil || createOrganizationResponse.StatusCode != 201 {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
 				Message:      "Error occurred creating Quay Organization",
 				KeyAndValues: []interface{}{"Status Code", createOrganizationResponse.StatusCode},
-				Error:        organizationError.Error,
+				Error:        createOrganizationError.Error,
 			})
 		}
 	} else if organizationResponse.StatusCode != 200 {
@@ -291,7 +307,7 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 		imageStreamName := imageStream.Name
 		// Check if Repository Exists
 		_, repositoryHttpResponse, repositoryErr := quayClient.GetRepository(quayOrganizationName, imageStreamName)
-		if repositoryHttpResponse == nil {
+		if quayHTTPResponseMissing(repositoryHttpResponse) {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
 				Message:      "Error creating request to retrieve repository",
@@ -313,6 +329,14 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 		if repositoryHttpResponse.StatusCode == 403 || repositoryHttpResponse.StatusCode == 404 {
 			logging.Log.Info("Creating Repository", "Organization", quayOrganizationName, "Name", imageStreamName)
 			_, createRepositoryResponse, createRepositoryErr := quayClient.CreateRepository(quayOrganizationName, imageStreamName)
+			if quayHTTPResponseMissing(createRepositoryResponse) {
+				return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+					Object:       namespace,
+					Message:      "Error creating request to create Quay Repository",
+					KeyAndValues: []interface{}{"Quay Repository", fmt.Sprintf("%s/%s", quayOrganizationName, imageStreamName)},
+					Error:        createRepositoryErr.Error,
+				})
+			}
 			if createRepositoryErr.Error != nil || createRepositoryResponse.StatusCode != 201 {
 				return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 					Object:       namespace,
@@ -337,7 +361,7 @@ func (r *NamespaceIntegrationReconciler) setupResources(ctx context.Context, req
 func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx context.Context, request reconcile.Request, namespace *corev1.Namespace, quayClient *qclient.Client, quayOrganizationName string, serviceAccount qotypes.OpenShiftServiceAccount, role qclient.QuayRole, quayName string, quayHostname string) (reconcile.Result, error) {
 	// Setup Robot Account
 	robotAccount, robotAccountResponse, robotAccountError := quayClient.GetOrganizationRobotAccount(quayOrganizationName, string(serviceAccount))
-	if robotAccountResponse == nil {
+	if quayHTTPResponseMissing(robotAccountResponse) {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
 			Message:      "Error occured creating HTTP request to fetch Quay Organization Robot Acccount",
@@ -359,21 +383,39 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 	if robotAccountResponse.StatusCode == 400 {
 		// Create Robot Account
 		robotAccount, robotAccountResponse, robotAccountError = quayClient.CreateOrganizationRobotAccount(quayOrganizationName, string(serviceAccount))
+		if quayHTTPResponseMissing(robotAccountResponse) {
+			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error creating request to create Quay Organization Robot Account",
+				KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Robot Account", serviceAccount},
+				Error:        robotAccountError.Error,
+			})
+		}
 		if robotAccountError.Error != nil || robotAccountResponse.StatusCode != 201 {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
 				Message:      "Error occurred retrieving robot account for Quay Organization",
 				KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Robot Account", serviceAccount, "Status Code", robotAccountResponse.StatusCode},
+				Error:        robotAccountError.Error,
 			})
 		}
 	}
 
 	organizationPrototypes, organizationPrototypesResponse, organizationPrototypesError := quayClient.GetPrototypesByOrganization(quayOrganizationName)
+	if quayHTTPResponseMissing(organizationPrototypesResponse) {
+		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error creating request to retrieve Prototypes for Quay Organization",
+			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName},
+			Error:        organizationPrototypesError.Error,
+		})
+	}
+
 	if organizationPrototypesError.Error != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
 			Message:      "Error occurred retrieving Prototypes for Quay Organization",
-			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Status Code", robotAccountResponse.StatusCode},
+			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Status Code", organizationPrototypesResponse.StatusCode},
 			Error:        organizationPrototypesError.Error,
 		})
 	}
@@ -382,13 +424,21 @@ func (r *NamespaceIntegrationReconciler) createRobotAccountAssociateToSA(ctx con
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
 			Message:      "Error occurred retrieving Prototypes for Quay Organization",
-			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Status Code", robotAccountResponse.StatusCode},
+			KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Status Code", organizationPrototypesResponse.StatusCode},
 		})
 	}
 
 	if found := qclient.IsRobotAccountInPrototypeByRole(organizationPrototypes.Prototypes, robotAccount.Name, string(role)); !found {
 		// Create Prototype
 		_, robotPrototypeResponse, robotPrototypeError := quayClient.CreateRobotPermissionForOrganization(quayOrganizationName, robotAccount.Name, string(role))
+		if quayHTTPResponseMissing(robotPrototypeResponse) {
+			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+				Object:       namespace,
+				Message:      "Error creating request to create Robot account permissions for Prototype",
+				KeyAndValues: []interface{}{"Quay Repository", quayOrganizationName, "Robot Account", robotAccount.Name, "Prototype", role},
+				Error:        robotPrototypeError.Error,
+			})
+		}
 		if robotPrototypeError.Error != nil || robotPrototypeResponse.StatusCode != 200 {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
@@ -460,6 +510,15 @@ func (r *NamespaceIntegrationReconciler) cleanupResources(request reconcile.Requ
 	logging.Log.Info("Deleting Organization", "Organization Name", quayOrganizationName)
 
 	_, organizationResponse, organizationError := quayClient.GetOrganizationByName(quayOrganizationName)
+	if quayHTTPResponseMissing(organizationResponse) {
+		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
+			Object:       namespace,
+			Message:      "Error creating request to retrieve Organization",
+			KeyAndValues: []interface{}{"Quay Organization", quayOrganizationName},
+			Error:        organizationError.Error,
+		})
+	}
+
 	if organizationError.Error != nil {
 		return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 			Object:       namespace,
@@ -475,7 +534,7 @@ func (r *NamespaceIntegrationReconciler) cleanupResources(request reconcile.Requ
 		// Organization is not present
 	} else if organizationResponse.StatusCode == 200 {
 		organizationDeleteResponse, organizationDeleteError := quayClient.DeleteOrganization(quayOrganizationName)
-		if organizationDeleteResponse == nil {
+		if quayHTTPResponseMissing(organizationDeleteResponse) {
 			return r.CoreComponents.ManageError(&core.QuayIntegrationCoreError{
 				Object:       namespace,
 				Message:      "Error occurred building HTTP request to delete Organization",
