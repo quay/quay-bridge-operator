@@ -2,7 +2,7 @@ package quay_test
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"testing"
@@ -53,7 +53,7 @@ func TestGetUser(t *testing.T) {
 			if tt.wantErr == "" {
 				e = nil
 			} else {
-				e = fmt.Errorf(tt.wantErr)
+				e = errors.New(tt.wantErr)
 			}
 
 			mockClient.EXPECT().Do(gomock.Any()).Return(mockResp, e)
@@ -112,7 +112,7 @@ func TestGetOrganizationByName(t *testing.T) {
 			if tt.wantErr == "" {
 				e = nil
 			} else {
-				e = fmt.Errorf(tt.wantErr)
+				e = errors.New(tt.wantErr)
 			}
 
 			mockClient.EXPECT().Do(gomock.Any()).Return(mockResp, e)
@@ -174,7 +174,7 @@ func TestCreateOrganizationByName(t *testing.T) {
 			if tt.wantErr == "" {
 				e = nil
 			} else {
-				e = fmt.Errorf(tt.wantErr)
+				e = errors.New(tt.wantErr)
 			}
 
 			mockClient.EXPECT().Do(gomock.Any()).Return(mockResp, e)
@@ -243,7 +243,7 @@ func TestCreateOrganizationRobotAccount(t *testing.T) {
 			if tt.wantErr == "" {
 				e = nil
 			} else {
-				e = fmt.Errorf(tt.wantErr)
+				e = errors.New(tt.wantErr)
 			}
 
 			mockClient.EXPECT().Do(gomock.Any()).Return(mockResp, e)
@@ -313,7 +313,7 @@ func TestGetOrganizationRobotAccount(t *testing.T) {
 			if tt.wantErr == "" {
 				e = nil
 			} else {
-				e = fmt.Errorf(tt.wantErr)
+				e = errors.New(tt.wantErr)
 			}
 
 			mockClient.EXPECT().Do(gomock.Any()).Return(mockResp, e)
@@ -404,7 +404,7 @@ func TestGetPrototypesByOrganization(t *testing.T) {
 			if tt.wantErr == "" {
 				e = nil
 			} else {
-				e = fmt.Errorf(tt.wantErr)
+				e = errors.New(tt.wantErr)
 			}
 
 			mockClient.EXPECT().Do(gomock.Any()).Return(mockResp, e)
@@ -465,7 +465,7 @@ func TestDeleteOrganization(t *testing.T) {
 			if tt.wantErr == "" {
 				e = nil
 			} else {
-				e = fmt.Errorf(tt.wantErr)
+				e = errors.New(tt.wantErr)
 			}
 
 			mockClient.EXPECT().Do(gomock.Any()).Return(mockResp, e)
@@ -550,7 +550,7 @@ func TestCreateRobotPermissionForOrganization(t *testing.T) {
 			if tt.wantErr == "" {
 				e = nil
 			} else {
-				e = fmt.Errorf(tt.wantErr)
+				e = errors.New(tt.wantErr)
 			}
 
 			mockClient.EXPECT().Do(gomock.Any()).Return(mockResp, e)
@@ -621,7 +621,7 @@ func TestGetRepository(t *testing.T) {
 			if tt.wantErr == "" {
 				e = nil
 			} else {
-				e = fmt.Errorf(tt.wantErr)
+				e = errors.New(tt.wantErr)
 			}
 
 			mockClient.EXPECT().Do(gomock.Any()).Return(mockResp, e)
@@ -693,7 +693,7 @@ func TestCreateRepository(t *testing.T) {
 			if tt.wantErr == "" {
 				e = nil
 			} else {
-				e = fmt.Errorf(tt.wantErr)
+				e = errors.New(tt.wantErr)
 			}
 
 			mockClient.EXPECT().Do(gomock.Any()).Return(mockResp, e)
